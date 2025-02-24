@@ -8,9 +8,11 @@ import (
 	"strings"
 )
 
-var ErrMetricType = errors.New("convert_url: metric type error")
-var ErrMetricVal = errors.New("convert_url: metric val error")
-var ErrURLFormat = errors.New("convert_url: invalid url format")
+var (
+	ErrMetricType = errors.New("convert_url: metric type error")
+	ErrMetricVal  = errors.New("convert_url: metric val error")
+	ErrURLFormat  = errors.New("convert_url: invalid url format")
+)
 
 type MemStorage struct {
 	Gauge   map[string]float64
@@ -24,108 +26,81 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+func (s *MemStorage) Clear() {
+	s.Gauge = make(map[string]float64)
+	s.Counter = make(map[string]int64)
+}
+
 var storage = NewMemStorage()
 
-func convertURL(r *http.Request, metricType string) (metricName, metricValue string, err error) {
-	log.Printf("req: 	%v", r)
-	log.Printf("path: 	%v", r.URL.Path)
+func convertURL(r *http.Request, metricType string) (string, string, error) {
+	log.Printf("req: %v", r)
+	log.Printf("path: %v", r.URL.Path)
 
-	var prefix string
+	prefix := "/update/" + metricType + "/"
+	if !strings.HasPrefix(r.URL.Path, prefix) {
+		return "", "", ErrURLFormat
+	}
+
+	url := strings.TrimPrefix(r.URL.Path, prefix)
+	metricName, metricValue, found := strings.Cut(url, "/")
+	if !found || metricName == "" || metricValue == "" {
+		return "", "", ErrURLFormat
+	}
+
+	return metricName, metricValue, nil
+}
+
+func updateMetric(r *http.Request, metricType string) (int, error) {
+	if r.Method != http.MethodPost {
+		return http.StatusMethodNotAllowed, nil
+	}
+
+	metricName, metricValue, err := convertURL(r, metricType)
+	if err != nil {
+		if err == ErrMetricVal {
+			return http.StatusBadRequest, err
+		}
+		return http.StatusNotFound, err
+	}
+
+	log.Printf("metricName: %s, metricValue: %s", metricName, metricValue)
+
 	switch metricType {
 	case "gauge":
-		prefix = "/update/gauge/"
+		v, err := strconv.ParseFloat(metricValue, 64)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		storage.Gauge[metricName] = v
+
 	case "counter":
-		prefix = "/update/counter/"
-	default:
-		return "", "", ErrMetricType
+		v, err := strconv.ParseInt(metricValue, 10, 64)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		storage.Counter[metricName] += v
 	}
 
-	url, found := strings.CutPrefix(r.URL.Path, prefix)
-	if !found {
-		return "", "", ErrURLFormat
-	}
-
-	metrics := strings.Split(url, "/")
-	if len(metrics) < 2 {
-		return "", "", ErrURLFormat
-	}
-
-	if !strings.ContainsAny(metrics[1], "0123456789") {
-		return "", "", ErrMetricVal
-	}
-
-	return metrics[0], metrics[1], nil
+	return http.StatusOK, nil
 }
 
-func GaugeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		return
-	}
-	metricName, metricValue, err := convertURL(r, "gauge")
-	if err != nil {
-		if err == ErrMetricVal {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Println("bad request")
-			return
+func metricHandler(metricType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status, err := updateMetric(r, metricType)
+		if err != nil {
+			log.Println(err)
 		}
-		if err == ErrURLFormat {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println("not found")
-			return
-		}
+		w.WriteHeader(status)
 	}
-	log.Printf("metricName: %s, metricValue: %s", metricName, metricValue)
-	v, err := strconv.ParseFloat(metricValue, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	storage.Gauge[metricName] = v
-	w.WriteHeader(http.StatusOK)
-
-}
-
-func CounterHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		return
-	}
-	metricName, metricValue, err := convertURL(r, "counter")
-	if err != nil {
-		if err == ErrMetricVal {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Println("bad request")
-			return
-		}
-		if err == ErrURLFormat {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println("not found")
-			return
-		}
-	}
-
-	log.Printf("metricName: %s, metricValue: %s", metricName, metricValue)
-	v, err := strconv.ParseInt(metricValue, 10, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		log.Println("status not found")
-		return
-	}
-	storage.Counter[metricName] += v
-	w.WriteHeader(http.StatusOK)
-	log.Printf("counterValue: %d", storage.Counter[metricName])
-}
-
-func (s *MemStorage) Clear() {
-	clear(s.Counter)
-	clear(s.Gauge)
 }
 
 func main() {
 	storage.Clear()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/update/gauge/", GaugeHandler)
-	mux.HandleFunc("/update/counter/", CounterHandler)
+	mux.HandleFunc("/update/gauge/", metricHandler("gauge"))
+	mux.HandleFunc("/update/counter/", metricHandler("counter"))
 	mux.HandleFunc("/update/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Println("bad request")
