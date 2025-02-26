@@ -13,7 +13,7 @@ var (
 	ErrURLFormat  = errors.New("convert_url: invalid url format")
 )
 
-func convertURL(r *http.Request, metricType string) (string, string, error) {
+func ConvertURL(r *http.Request, metricType string) (string, string, error) {
 	log.Printf("req: %v", r)
 	log.Printf("path: %v", r.URL.Path)
 

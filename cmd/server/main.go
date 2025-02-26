@@ -8,10 +8,10 @@ import (
 	"github.com/paranoiachains/metrics/internal/storage"
 )
 
-var s = storage.NewMemStorage()
+var S = storage.NewMemStorage()
 
 func main() {
-	s.Clear()
+	storage.Storage.Clear()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/gauge/", handlers.MetricHandler("gauge"))

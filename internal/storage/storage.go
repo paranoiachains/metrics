@@ -16,3 +16,5 @@ func (s *MemStorage) Clear() {
 	s.Gauge = make(map[string]float64)
 	s.Counter = make(map[string]int64)
 }
+
+var Storage = NewMemStorage()

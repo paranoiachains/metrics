@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/paranoiachains/metrics/internal/storage"
 	"github.com/paranoiachains/metrics/internal/utils"
 )
 
@@ -13,7 +14,7 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 		return http.StatusMethodNotAllowed, nil
 	}
 
-	metricName, metricValue, err := utils.convertURL(r, metricType)
+	metricName, metricValue, err := utils.ConvertURL(r, metricType)
 	if err != nil {
 		if err == utils.ErrMetricVal {
 			return http.StatusBadRequest, err
@@ -29,14 +30,14 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
-		s.Gauge[metricName] = v
+		storage.Storage.Gauge[metricName] = v
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
-		s.Counter[metricName] += v
+		storage.Storage.Counter[metricName] += v
 	}
 
 	return http.StatusOK, nil
