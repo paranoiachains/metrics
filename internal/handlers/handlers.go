@@ -16,7 +16,7 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 
 	metricName, metricValue, err := utils.ConvertURL(r, metricType)
 	if err != nil {
-		if err == utils.ErrMetricVal {
+		if err == utils.ErrURLFormat {
 			return http.StatusBadRequest, err
 		}
 		return http.StatusNotFound, err
@@ -49,6 +49,7 @@ func MetricHandler(metricType string) http.HandlerFunc {
 		if err != nil {
 			log.Println(err)
 		}
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(status)
 	}
 }
