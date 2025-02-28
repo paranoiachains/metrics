@@ -11,6 +11,7 @@ var (
 	ErrMetricType = errors.New("convert_url: metric type error")
 	ErrMetricVal  = errors.New("convert_url: metric val error")
 	ErrURLFormat  = errors.New("convert_url: invalid url format")
+	ErrNoName     = errors.New("convert_url: no metric name")
 )
 
 func ConvertURL(r *http.Request, metricType string) (string, string, error) {
@@ -25,7 +26,7 @@ func ConvertURL(r *http.Request, metricType string) (string, string, error) {
 	url := strings.TrimPrefix(r.URL.Path, prefix)
 	metricName, metricValue, found := strings.Cut(url, "/")
 	if !found || metricName == "" || metricValue == "" {
-		return "", "", ErrURLFormat
+		return "", "", ErrNoName
 	}
 
 	return metricName, metricValue, nil
