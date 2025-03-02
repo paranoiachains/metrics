@@ -9,7 +9,9 @@ import (
 	"github.com/paranoiachains/metrics/internal/utils"
 )
 
+// changes value of global storage, returns status code
 func updateMetric(r *http.Request, metricType string) (int, error) {
+	// only post methods
 	if r.Method != http.MethodPost {
 		return http.StatusMethodNotAllowed, nil
 	}
@@ -43,6 +45,7 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 	return http.StatusOK, nil
 }
 
+// middleware
 func MetricHandler(metricType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status, err := updateMetric(r, metricType)
