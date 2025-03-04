@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"runtime"
 	"sync"
@@ -121,12 +122,17 @@ func CompareGauge(m map[string]float64) {
 	}
 }
 
+func UpdateRandomValue(v float64) {
+	MyMetrics.Gauge["RandomValue"] = v
+}
+
 func UpdateGauge(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
 	for k, v := range m {
 		MyMetrics.Gauge[k] = v
 	}
+	UpdateRandomValue(rand.Float64())
 }
 
 func main() {

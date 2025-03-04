@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -16,9 +15,6 @@ var (
 
 // convert /update/gauge/var/123 to metricName = var; metricValue = 123
 func ConvertURL(r *http.Request, metricType string) (string, string, error) {
-	log.Printf("req: %v", r)
-	log.Printf("path: %v", r.URL.Path)
-
 	prefix := "/update/" + metricType + "/"
 	if !strings.HasPrefix(r.URL.Path, prefix) {
 		return "", "", ErrURLFormat

@@ -24,8 +24,6 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 		return http.StatusNotFound, err
 	}
 
-	log.Printf("metricName: %s, metricValue: %s", metricName, metricValue)
-
 	switch metricType {
 	case "gauge":
 		v, err := strconv.ParseFloat(metricValue, 64)
@@ -48,6 +46,7 @@ func updateMetric(r *http.Request, metricType string) (int, error) {
 // middleware
 func MetricHandler(metricType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
 		status, err := updateMetric(r, metricType)
 		if err != nil {
 			log.Println(err)
@@ -55,4 +54,11 @@ func MetricHandler(metricType string) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(status)
 	}
+}
+
+func LogRequest(r *http.Request) {
+	log.Printf("request method: %v", r.Method)
+	log.Printf("request path: %v", r.URL.Path)
+	log.Printf("request content-type: %v", r.Header.Get("Content-Type"))
+	log.Printf("request content-length: %v\n\n", r.Header.Get("Content-Length"))
 }
