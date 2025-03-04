@@ -115,7 +115,7 @@ func CompareGauge(m map[string]float64) {
 	if len(MyMetrics.Gauge) == 0 {
 		return
 	}
-	for k, _ := range m {
+	for k := range m {
 		if m[k] != MyMetrics.Gauge[k] {
 			MyMetrics.Counter["PollCount"] += 1
 		}
