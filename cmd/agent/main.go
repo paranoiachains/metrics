@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
 	"runtime"
+	"sync"
+	"time"
 )
 
 type Metrics struct {
@@ -9,11 +13,19 @@ type Metrics struct {
 	Counter map[string]int64
 }
 
-var MyMetrics Metrics
+var (
+	MyMetrics = Metrics{Gauge: make(map[string]float64), Counter: make(map[string]int64)}
+	mu        sync.Mutex
+)
+
+func (m *Metrics) Clear() {
+	m.Gauge = make(map[string]float64)
+	m.Counter = make(map[string]int64)
+}
 
 func GetMemStats() map[string]float64 {
 	metrics := runtime.MemStats{}
-	runtime.ReadMemStats(&runtime.MemStats{})
+	runtime.ReadMemStats(&metrics)
 
 	m := map[string]float64{
 		"Alloc":         float64(metrics.Alloc),
@@ -47,7 +59,61 @@ func GetMemStats() map[string]float64 {
 	return m
 }
 
-func СompareGauge(m map[string]float64) {
+func UpdateWithInterval(pollInterval int) {
+	for {
+		time.Sleep(time.Duration(pollInterval) * time.Second)
+		m := GetMemStats()
+		CompareGauge(m)
+		UpdateGauge(m)
+		fmt.Println(MyMetrics.Gauge)
+		fmt.Println(MyMetrics.Counter)
+	}
+}
+
+func MetricsNewRequest(url string) error {
+	r, err := http.Post(url, "text/plain", nil)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusOK {
+		return fmt.Errorf("metrics_new_request: bad response! got %v, want %v", r.StatusCode, http.StatusOK)
+	}
+	defer r.Body.Close()
+	return nil
+}
+
+func SendMetrics() {
+	mu.Lock()
+	defer mu.Unlock()
+	for k, v := range MyMetrics.Gauge {
+		err := MetricsNewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "gauge", k, v))
+		if err != nil {
+			fmt.Println("send_metrics: error sending gauge metric:", err)
+		}
+	}
+	for k, v := range MyMetrics.Counter {
+		err := MetricsNewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "counter", k, v))
+		if err != nil {
+			fmt.Println("send_metrics: error sending counter metric:", err)
+		}
+	}
+}
+
+func SendMetricsWithInterval(reportInterval int) {
+	for {
+		time.Sleep(time.Duration(reportInterval) * time.Second)
+		SendMetrics()
+		fmt.Println("Sent!")
+	}
+
+}
+
+func CompareGauge(m map[string]float64) {
+	mu.Lock()
+	defer mu.Unlock()
+	if len(MyMetrics.Gauge) == 0 {
+		return
+	}
 	for k, _ := range m {
 		if m[k] != MyMetrics.Gauge[k] {
 			MyMetrics.Counter["PollCount"] += 1
@@ -56,10 +122,17 @@ func СompareGauge(m map[string]float64) {
 }
 
 func UpdateGauge(m map[string]float64) {
+	mu.Lock()
+	defer mu.Unlock()
 	for k, v := range m {
 		MyMetrics.Gauge[k] = v
 	}
 }
 
 func main() {
+	MyMetrics.Clear()
+	go UpdateWithInterval(2)
+	go SendMetricsWithInterval(10)
+
+	select {}
 }
