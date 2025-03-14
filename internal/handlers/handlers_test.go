@@ -5,10 +5,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetricHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	type args struct {
 		metricType string
 	}
@@ -80,18 +82,18 @@ func TestMetricHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			r := gin.Default()
+			r.POST("/update/:metricType/:metricName/:metricValue", MetricHandler())
+
 			request := httptest.NewRequest(http.MethodPost, tt.url, nil)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(MetricHandler(tt.args.metricType))
-			h(w, request)
+			r.ServeHTTP(w, request)
 
 			result := w.Result()
-
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
 
 			result.Body.Close()
-
 		})
 	}
 }

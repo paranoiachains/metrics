@@ -1,64 +1,63 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/paranoiachains/metrics/internal/storage"
+	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/utils"
 )
 
-// changes value of global storage, returns status code
-func updateMetric(r *http.Request, metricType string) (int, error) {
-	// only post methods
-	if r.Method != http.MethodPost {
-		return http.StatusMethodNotAllowed, nil
-	}
-
-	metricName, metricValue, err := utils.ConvertURL(r, metricType)
+// updateMetric changes the value of global storage and returns a status code
+func updateMetric(c *gin.Context, metricType string) {
+	metricValue, metricName, err := utils.ExtractMetricParams(c)
 	if err != nil {
-		if err == utils.ErrURLFormat {
-			return http.StatusBadRequest, err
-		}
-		return http.StatusNotFound, err
+		c.Status(http.StatusNotFound)
+		c.Header("Content-Type", "text/plain")
+		c.Header("Error", err.Error())
+		return
 	}
 
 	switch metricType {
 	case "gauge":
 		v, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
-			return http.StatusBadRequest, err
+			c.Status(http.StatusBadRequest)
+			c.Header("Content-Type", "text/plain")
+			c.Header("Error", err.Error())
+			return
 		}
-		storage.Storage.Gauge[metricName] = v
+		Storage.Gauge[metricName] = v
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
-			return http.StatusBadRequest, err
+			c.Status(http.StatusBadRequest)
+			c.Header("Content-Type", "text/plain")
+			c.Header("Error", err.Error())
+			return
 		}
-		storage.Storage.Counter[metricName] += v
+		Storage.Counter[metricName] += v
 	}
 
-	return http.StatusOK, nil
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/plain")
 }
 
-// middleware
-func MetricHandler(metricType string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r)
-		status, err := updateMetric(r, metricType)
-		if err != nil {
-			log.Println(err)
+// MetricHandler is a Gin route handler for metric updates
+func MetricHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodPost {
+			c.Status(http.StatusMethodNotAllowed)
+			c.Header("Content-Type", "text/plain")
+			return
 		}
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(status)
+		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
+			c.Status(http.StatusBadRequest)
+			c.Header("Content-Type", "text/plain")
+			return
+		}
+		updateMetric(c, c.Param("metricType"))
+		c.Header("Content-Type", "text/plain")
 	}
-}
-
-func LogRequest(r *http.Request) {
-	log.Printf("request method: %v", r.Method)
-	log.Printf("request path: %v", r.URL.Path)
-	log.Printf("request content-type: %v", r.Header.Get("Content-Type"))
-	log.Printf("request content-length: %v\n\n", r.Header.Get("Content-Length"))
 }

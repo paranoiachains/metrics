@@ -1,11 +1,12 @@
 package main
 
-import "github.com/paranoiachains/metrics/internal/sender"
+import (
+	"github.com/paranoiachains/metrics/internal/collector"
+)
 
 func main() {
-	sender.MyMetrics.Clear()
-	go sender.UpdateWithInterval(2)
-	go sender.SendMetricsWithInterval(10)
+	go collector.UpdateWithInterval(2)
+	go collector.SendWithInterval(10)
 
 	select {}
 }
