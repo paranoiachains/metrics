@@ -1,29 +1,25 @@
-package sender
+package collector
 
 import (
 	"fmt"
 	"math/rand"
-	"net/http"
 	"runtime"
 	"sync"
 	"time"
 )
-
-type Metrics struct {
-	Gauge   map[string]float64
-	Counter map[string]int64
-}
 
 var (
 	MyMetrics = Metrics{Gauge: make(map[string]float64), Counter: make(map[string]int64)}
 	mu        sync.Mutex
 )
 
-func (m *Metrics) Clear() {
-	m.Gauge = make(map[string]float64)
-	m.Counter = make(map[string]int64)
+// storage struct
+type Metrics struct {
+	Gauge   map[string]float64
+	Counter map[string]int64
 }
 
+// fetch runtime stats
 func GetMemStats() map[string]float64 {
 	metrics := runtime.MemStats{}
 	runtime.ReadMemStats(&metrics)
@@ -60,55 +56,7 @@ func GetMemStats() map[string]float64 {
 	return m
 }
 
-func UpdateWithInterval(pollInterval int) {
-	for {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-		m := GetMemStats()
-		CompareGauge(m)
-		UpdateGauge(m)
-		fmt.Println(MyMetrics.Gauge)
-		fmt.Println(MyMetrics.Counter)
-	}
-}
-
-func MetricsNewRequest(url string) error {
-	r, err := http.Post(url, "text/plain", nil)
-	if err != nil {
-		return err
-	}
-	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("metrics_new_request: bad response! got %v, want %v", r.StatusCode, http.StatusOK)
-	}
-	defer r.Body.Close()
-	return nil
-}
-
-func SendMetrics() {
-	mu.Lock()
-	defer mu.Unlock()
-	for k, v := range MyMetrics.Gauge {
-		err := MetricsNewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "gauge", k, v))
-		if err != nil {
-			fmt.Println("send_metrics: error sending gauge metric:", err)
-		}
-	}
-	for k, v := range MyMetrics.Counter {
-		err := MetricsNewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "counter", k, v))
-		if err != nil {
-			fmt.Println("send_metrics: error sending counter metric:", err)
-		}
-	}
-}
-
-func SendMetricsWithInterval(reportInterval int) {
-	for {
-		time.Sleep(time.Duration(reportInterval) * time.Second)
-		SendMetrics()
-		fmt.Println("Sent!")
-	}
-
-}
-
+// increase PollCount in Counter if runtime metrics have changed
 func CompareGauge(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -122,15 +70,28 @@ func CompareGauge(m map[string]float64) {
 	}
 }
 
-func UpdateRandomValue(v float64) {
-	MyMetrics.Gauge["RandomValue"] = v
-}
-
+// update Gauge
 func UpdateGauge(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
 	for k, v := range m {
 		MyMetrics.Gauge[k] = v
 	}
-	UpdateRandomValue(rand.Float64())
+	// random value gauge variable
+	MyMetrics.Gauge["RandomValue"] = rand.Float64()
+}
+
+// update metrics storage with interval
+func UpdateWithInterval(pollInterval int) {
+	for {
+		time.Sleep(time.Duration(pollInterval) * time.Second)
+		// 1. fetch runtime metrics
+		m := GetMemStats()
+		// 2. check what've changed
+		CompareGauge(m)
+		// 3. update metrics storage
+		UpdateGauge(m)
+		fmt.Println(MyMetrics.Gauge)
+		fmt.Println(MyMetrics.Counter)
+	}
 }
