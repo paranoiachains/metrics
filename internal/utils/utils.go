@@ -2,29 +2,24 @@ package utils
 
 import (
 	"errors"
-	"net/http"
-	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
-	ErrMetricType = errors.New("convert_url: metric type error")
-	ErrMetricVal  = errors.New("convert_url: metric val error")
-	ErrURLFormat  = errors.New("convert_url: invalid url format")
-	ErrNoName     = errors.New("convert_url: no metric name")
+	ErrMetricVal = errors.New("extract_metric_params: metric val error")
+	ErrNoName    = errors.New("extract_metric_params: no metric name")
 )
 
-// convert /update/gauge/var/123 to metricName = var; metricValue = 123
-func ConvertURL(r *http.Request, metricType string) (string, string, error) {
-	prefix := "/update/" + metricType + "/"
-	if !strings.HasPrefix(r.URL.Path, prefix) {
-		return "", "", ErrURLFormat
-	}
+func ExtractMetricParams(c *gin.Context) (string, string, error) {
+	metricValue := c.Param("metricValue")
+	metricName := c.Param("metricName")
 
-	url := strings.TrimPrefix(r.URL.Path, prefix)
-	metricName, metricValue, found := strings.Cut(url, "/")
-	if !found || metricName == "" || metricValue == "" {
+	if metricValue == "" {
+		return "", "", ErrMetricVal
+	}
+	if metricName == "" {
 		return "", "", ErrNoName
 	}
-
-	return metricName, metricValue, nil
+	return metricValue, metricName, nil
 }
