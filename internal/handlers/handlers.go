@@ -63,9 +63,10 @@ func MetricHandler() gin.HandlerFunc {
 	}
 }
 
+// return metric value from storage
 func ReturnMetric(c *gin.Context) {
-	fmt.Println("return metric init")
 	metricType := c.Param("metricType")
+	fmt.Println(metricType)
 	metricName := c.Param("metricName")
 
 	switch metricType {
@@ -86,5 +87,8 @@ func ReturnMetric(c *gin.Context) {
 			return
 		}
 		c.String(200, fmt.Sprintf("%d", retrievedName))
+
+	default:
+		c.String(http.StatusBadRequest, "Invalid metric type")
 	}
 }
