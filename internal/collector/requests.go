@@ -30,7 +30,7 @@ func Send(endpoint string) {
 		}
 	}
 	for k, v := range MyMetrics.Counter {
-		err := NewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "counter", k, v))
+		err := NewRequest(fmt.Sprintf("http://%s/update/%s/%s/%v", endpoint, "counter", k, v))
 		if err != nil {
 			fmt.Println("send_metrics: error sending counter metric:", err)
 		}

@@ -13,5 +13,6 @@ func main() {
 
 	r := gin.Default()
 	r.POST("/update/:metricType/:metricName/:metricValue/", handlers.MetricHandler())
+	r.GET("/update/:metricType/:metricName/:metricValue/", handlers.ReturnMetric)
 	r.Run(flags.ServerEndpoint)
 }

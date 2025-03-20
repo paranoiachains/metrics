@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -44,7 +45,7 @@ func updateMetric(c *gin.Context, metricType string) {
 	c.Header("Content-Type", "text/plain")
 }
 
-// MetricHandler is a Gin route handler for metric updates
+// MetricHandler is a Gin route handler for POST HTTP metric updates
 func MetricHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodPost {
@@ -59,5 +60,31 @@ func MetricHandler() gin.HandlerFunc {
 		}
 		updateMetric(c, c.Param("metricType"))
 		c.Header("Content-Type", "text/plain")
+	}
+}
+
+func ReturnMetric(c *gin.Context) {
+	fmt.Println("return metric init")
+	metricType := c.Param("metricType")
+	metricName := c.Param("metricName")
+
+	switch metricType {
+	case "gauge":
+		retrievedName, ok := Storage.Gauge[metricName]
+		if !ok {
+			c.Status(http.StatusNotFound)
+			c.Header("Content-Type", "text/plain")
+			return
+		}
+		c.String(200, fmt.Sprintf("%f", retrievedName))
+
+	case "counter":
+		retrievedName, ok := Storage.Counter[metricName]
+		if !ok {
+			c.Status(http.StatusNotFound)
+			c.Header("Content-Type", "text/plain")
+			return
+		}
+		c.String(200, fmt.Sprintf("%d", retrievedName))
 	}
 }
