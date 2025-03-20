@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -66,7 +65,6 @@ func MetricHandler() gin.HandlerFunc {
 // return metric value from storage
 func ReturnMetric(c *gin.Context) {
 	metricType := c.Param("metricType")
-	fmt.Println(metricType)
 	metricName := c.Param("metricName")
 
 	switch metricType {
@@ -77,7 +75,7 @@ func ReturnMetric(c *gin.Context) {
 			c.Header("Content-Type", "text/plain")
 			return
 		}
-		c.String(200, fmt.Sprintf("%f", retrievedName))
+		c.String(200, strconv.FormatFloat(retrievedName, 'g', -1, 64))
 
 	case "counter":
 		retrievedName, ok := Storage.Counter[metricName]
@@ -86,7 +84,7 @@ func ReturnMetric(c *gin.Context) {
 			c.Header("Content-Type", "text/plain")
 			return
 		}
-		c.String(200, fmt.Sprintf("%d", retrievedName))
+		c.String(200, strconv.FormatInt(retrievedName, 10))
 
 	default:
 		c.String(http.StatusBadRequest, "Invalid metric type")
