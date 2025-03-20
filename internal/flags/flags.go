@@ -1,17 +1,25 @@
-package main
+package flags
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 var ServerEndpoint string
 var ClientEndpoint string
 var ReportInterval int
 var PollInterval int
 
-func ParseFlags() {
-	flag.StringVar(&ServerEndpoint, "a", "127.0.0.1:8080", "Set server endpoint")
-	flag.StringVar(&ClientEndpoint, "a", "127.0.0.1:8080", "Set client endpoint")
-	flag.IntVar(&ReportInterval, "r", 10, "Set report interval")
-	flag.IntVar(&PollInterval, "r", 2, "Set poll interval")
+func ParseServerFlags() {
+	serverFlags := flag.NewFlagSet("", flag.ExitOnError)
+	serverFlags.StringVar(&ServerEndpoint, "a", "localhost:8080", "Set server endpoint")
+	serverFlags.Parse(os.Args[1:])
+}
 
-	flag.Parse()
+func ParseAgentFlags() {
+	clientFlags := flag.NewFlagSet("", flag.ExitOnError)
+	clientFlags.StringVar(&ClientEndpoint, "a", "localhost:8080", "Set client endpoint")
+	clientFlags.IntVar(&ReportInterval, "r", 10, "Set report interval")
+	clientFlags.IntVar(&PollInterval, "p", 2, "Set poll interval")
+	clientFlags.Parse(os.Args[1:])
 }

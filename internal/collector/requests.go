@@ -20,11 +20,11 @@ func NewRequest(url string) error {
 }
 
 // Send HTTP requests with collected metrics
-func Send() {
+func Send(endpoint string) {
 	mu.Lock()
 	defer mu.Unlock()
 	for k, v := range MyMetrics.Gauge {
-		err := NewRequest(fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", "gauge", k, v))
+		err := NewRequest(fmt.Sprintf("http://%s/update/%s/%s/%v", endpoint, "gauge", k, v))
 		if err != nil {
 			fmt.Println("send_metrics: error sending gauge metric:", err)
 		}
@@ -38,10 +38,10 @@ func Send() {
 }
 
 // Send HTTP requests with collected metrics with interval
-func SendWithInterval(reportInterval int) {
+func SendWithInterval(reportInterval int, endpoint string) {
 	for {
 		time.Sleep(time.Duration(reportInterval) * time.Second)
-		Send()
+		Send(endpoint)
 		fmt.Println("Sent!")
 	}
 }
