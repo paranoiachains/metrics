@@ -1,11 +1,13 @@
 package handlers
 
-import "fmt"
-
 // store values (temporary choice)
 type MemStorage struct {
 	Gauge   map[string]float64
 	Counter map[string]int64
+}
+
+type Database interface {
+	Update(valueType string, name string, value any)
 }
 
 func NewMemStorage() *MemStorage {
@@ -20,10 +22,16 @@ func (s *MemStorage) Clear() {
 	s.Counter = make(map[string]int64)
 }
 
-func (s MemStorage) LogStorage() {
-	fmt.Printf("Storage state:\n\n, Gauge: %v\n\n, Counter: %v\n\n", s.Gauge, s.Counter)
-	fmt.Println(s.Gauge)
-	fmt.Println(s.Counter)
+func (s *MemStorage) Update(valueType string, name string, value any) {
+	switch valueType {
+	case "gauge":
+		value := value.(float64)
+		s.Gauge[name] = value
+
+	case "counter":
+		value := value.(int64)
+		s.Counter[name] += value
+	}
 }
 
 var Storage = NewMemStorage()
