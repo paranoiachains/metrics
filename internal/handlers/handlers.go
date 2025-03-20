@@ -90,3 +90,10 @@ func ReturnMetric(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Invalid metric type")
 	}
 }
+
+func ReturnAll(c *gin.Context) {
+	c.HTML(http.StatusOK, "index.html", gin.H{
+		"message": "Collected Metrics",
+		"metrics": Storage,
+	})
+}
