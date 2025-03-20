@@ -14,8 +14,8 @@ func main() {
 	handlers.Storage.Clear()
 
 	r := gin.Default()
-	templatesPath, _ := filepath.Abs("../../templates/*")
-	r.LoadHTMLGlob(templatesPath)
+	templatesPath, _ := filepath.Abs("../../templates/index.html")
+	r.LoadHTMLFiles(templatesPath)
 
 	r.POST("/update/:metricType/:metricName/:metricValue/", handlers.MetricHandler())
 	r.GET("/value/:metricType/:metricName/", handlers.ReturnMetric)
