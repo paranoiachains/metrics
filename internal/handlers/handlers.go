@@ -9,7 +9,7 @@ import (
 )
 
 // updateMetric changes the value of global storage and returns a status code
-func updateMetric(c *gin.Context, metricType string) {
+func updateMetric(c *gin.Context, metricType string, db Database) {
 	metricValue, metricName, err := utils.ExtractMetricParams(c)
 	if err != nil {
 		c.Status(http.StatusNotFound)
@@ -27,7 +27,7 @@ func updateMetric(c *gin.Context, metricType string) {
 			c.Header("Error", err.Error())
 			return
 		}
-		Storage.Gauge[metricName] = v
+		db.Update("gauge", metricName, v)
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
@@ -37,7 +37,7 @@ func updateMetric(c *gin.Context, metricType string) {
 			c.Header("Error", err.Error())
 			return
 		}
-		Storage.Counter[metricName] += v
+		db.Update("counter", metricName, v)
 	}
 
 	c.Status(http.StatusOK)
@@ -57,7 +57,7 @@ func MetricHandler() gin.HandlerFunc {
 			c.Header("Content-Type", "text/plain")
 			return
 		}
-		updateMetric(c, c.Param("metricType"))
+		updateMetric(c, c.Param("metricType"), Storage)
 		c.Header("Content-Type", "text/plain")
 	}
 }
