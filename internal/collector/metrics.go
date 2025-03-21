@@ -91,7 +91,6 @@ func UpdateWithInterval(pollInterval int) {
 		CompareGauge(m)
 		// 3. update metrics storage
 		UpdateGauge(m)
-		fmt.Println(MyMetrics.Gauge)
-		fmt.Println(MyMetrics.Counter)
+		fmt.Println("Metrics updated.")
 	}
 }

@@ -14,7 +14,9 @@ func main() {
 	if flags.Cfg.REPORT_INTERVAL != 0 {
 		flags.ReportInterval = flags.Cfg.REPORT_INTERVAL
 	}
-
+	if flags.Cfg.ADDRESS != "" {
+		flags.ClientEndpoint = flags.Cfg.ADDRESS
+	}
 	go collector.UpdateWithInterval(flags.PollInterval)
 	go collector.SendWithInterval(flags.ReportInterval, flags.ClientEndpoint)
 

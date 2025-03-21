@@ -42,6 +42,6 @@ func SendWithInterval(reportInterval int, endpoint string) {
 	for {
 		time.Sleep(time.Duration(reportInterval) * time.Second)
 		Send(endpoint)
-		fmt.Println("Sent!")
+		fmt.Println("Metrics sent!")
 	}
 }
