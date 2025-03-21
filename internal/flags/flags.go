@@ -25,6 +25,12 @@ func ParseEnv() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if Cfg.PollInterval != 0 {
+		PollInterval = Cfg.PollInterval
+	}
+	if Cfg.ReportInterval != 0 {
+		ReportInterval = Cfg.ReportInterval
+	}
 }
 
 func ParseServerFlags() {
