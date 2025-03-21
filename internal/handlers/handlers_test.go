@@ -19,47 +19,52 @@ func TestMetricHandler(t *testing.T) {
 		contentType string
 	}
 	tests := []struct {
-		name string
-		url  string
-		want want
-		args args
+		name   string
+		method string
+		url    string
+		want   want
+		args   args
 	}{
 		{
-			name: "casual gauge",
-			url:  "/update/gauge/asd/123",
+			name:   "casual gauge",
+			method: "POST",
+			url:    "/update/gauge/asd/123",
 			want: want{
 				statusCode:  http.StatusOK,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
 			},
 		},
 		{
-			name: "casual counter (tba)",
-			url:  "/update/counter/asd/123",
+			name:   "casual counter (tba)",
+			method: "POST",
+			url:    "/update/counter/asd/123",
 			want: want{
 				statusCode:  http.StatusOK,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "counter",
 			},
 		},
 		{
-			name: "wrong type",
-			url:  "/update/gaug/asd/123",
+			name:   "wrong type",
+			method: "POST",
+			url:    "/update/gaug/asd/123",
 			want: want{
 				statusCode:  http.StatusBadRequest,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
 			},
 		},
 		{
-			name: "no name",
-			url:  "/update/gauge/123",
+			name:   "no name",
+			method: "POST",
+			url:    "/update/gauge/123",
 			want: want{
 				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
@@ -69,11 +74,12 @@ func TestMetricHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "wrong value",
-			url:  "/update/gauge/asd/asd",
+			name:   "wrong value",
+			method: "POST",
+			url:    "/update/gauge/asd/asd",
 			want: want{
 				statusCode:  http.StatusBadRequest,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
@@ -83,9 +89,8 @@ func TestMetricHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := gin.Default()
-			r.POST("/update/:metricType/:metricName/:metricValue", MetricHandler())
-
-			request := httptest.NewRequest(http.MethodPost, tt.url, nil)
+			r.POST("/update/:metricType/:metricName/:metricValue", Handler())
+			request := httptest.NewRequest(tt.method, tt.url, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, request)
 
