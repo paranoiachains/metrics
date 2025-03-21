@@ -10,8 +10,6 @@ import (
 
 // update changes the value of global storage and returns a status code
 func update(c *gin.Context, metricType string, db Database) {
-	logger.Initialize()
-	defer logger.Log.Sync()
 	metricValue := c.Param("metricValue")
 	metricName := c.Param("metricName")
 
@@ -40,14 +38,12 @@ func update(c *gin.Context, metricType string, db Database) {
 		}
 		db.Update("counter", metricName, v)
 	}
-	c.String(http.StatusOK, "сука")
+	c.String(http.StatusOK, "")
 }
 
 // Handler is a Gin route handler for POST HTTP metric updates
 func Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		logger.Initialize()
-		defer logger.Log.Sync()
 		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
 			logger.Log.Error("invalid metric type")
 			c.String(http.StatusBadRequest, "")
@@ -59,9 +55,6 @@ func Handler() gin.HandlerFunc {
 
 // return metric value from storage
 func Return(c *gin.Context) {
-	logger.Initialize()
-	defer logger.Log.Sync()
-
 	metricType := c.Param("metricType")
 	metricName := c.Param("metricName")
 
