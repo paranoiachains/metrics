@@ -11,8 +11,8 @@ import (
 func main() {
 	flags.ParseServerFlags()
 	flags.ParseEnv()
-	if flags.Cfg.ADDRESS != "" {
-		flags.ServerEndpoint = flags.Cfg.ADDRESS
+	if flags.Cfg.Address != "" {
+		flags.ServerEndpoint = flags.Cfg.Address
 	}
 	// clear storage before init
 	handlers.Storage.Clear()
