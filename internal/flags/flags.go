@@ -2,13 +2,30 @@ package flags
 
 import (
 	"flag"
+	"log"
 	"os"
+
+	"github.com/caarlos0/env/v11"
 )
 
 var ServerEndpoint string
 var ClientEndpoint string
 var ReportInterval int
 var PollInterval int
+var Cfg Config
+
+type Config struct {
+	ADDRESS         string `env:"ADDRESS"`
+	REPORT_INTERVAL int    `env:"REPORT_INTERVAL"`
+	POLL_INTERVAL   int    `env:"POLL_INTERVAL"`
+}
+
+func ParseEnv() {
+	err := env.Parse(&Cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func ParseServerFlags() {
 	serverFlags := flag.NewFlagSet("", flag.ExitOnError)

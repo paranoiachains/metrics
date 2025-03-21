@@ -10,6 +10,10 @@ import (
 
 func main() {
 	flags.ParseServerFlags()
+	flags.ParseEnv()
+	if flags.Cfg.ADDRESS != "" {
+		flags.ServerEndpoint = flags.Cfg.ADDRESS
+	}
 	// clear storage before init
 	handlers.Storage.Clear()
 
