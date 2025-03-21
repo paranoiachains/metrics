@@ -20,6 +20,8 @@ func Initialize() error {
 }
 
 func Middleware() gin.HandlerFunc {
+	Initialize()
+	defer Log.Sync()
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
