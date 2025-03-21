@@ -31,7 +31,7 @@ func TestMetricHandler(t *testing.T) {
 			url:    "/update/gauge/asd/123",
 			want: want{
 				statusCode:  http.StatusOK,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
@@ -43,7 +43,7 @@ func TestMetricHandler(t *testing.T) {
 			url:    "/update/counter/asd/123",
 			want: want{
 				statusCode:  http.StatusOK,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "counter",
@@ -55,7 +55,7 @@ func TestMetricHandler(t *testing.T) {
 			url:    "/update/gaug/asd/123",
 			want: want{
 				statusCode:  http.StatusBadRequest,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
@@ -79,7 +79,7 @@ func TestMetricHandler(t *testing.T) {
 			url:    "/update/gauge/asd/asd",
 			want: want{
 				statusCode:  http.StatusBadRequest,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
 				metricType: "gauge",
@@ -89,7 +89,7 @@ func TestMetricHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := gin.Default()
-			r.POST("/update/:metricType/:metricName/:metricValue", MetricHandler())
+			r.POST("/update/:metricType/:metricName/:metricValue", Handler())
 			request := httptest.NewRequest(tt.method, tt.url, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, request)
