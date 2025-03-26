@@ -89,7 +89,7 @@ func TestMetricHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := gin.Default()
-			r.POST("/update/:metricType/:metricName/:metricValue", Handler())
+			r.POST("/update/:metricType/:metricName/:metricValue", URLUpdate())
 			request := httptest.NewRequest(tt.method, tt.url, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, request)

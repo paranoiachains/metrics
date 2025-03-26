@@ -24,8 +24,13 @@ func main() {
 	templatesPath, _ := filepath.Abs("../../templates/index.html")
 	r.LoadHTMLFiles(templatesPath)
 
-	r.POST("/update", handlers.Handler())
-	r.POST("/value", handlers.ReturnWrap())
-	r.GET("/", handlers.ReturnAll)
+	r.GET("/", handlers.HTMLReturnAll)
+
+	r.POST("/update", handlers.JSONUpdate())
+	r.POST("/value", handlers.JSONValue())
+
+	r.POST("/update/:metricType/:metricName/:metricValue", handlers.URLUpdate())
+	r.GET("/value/:metricType/:metricName/", handlers.URLValue)
+
 	r.Run(flags.ServerEndpoint)
 }
