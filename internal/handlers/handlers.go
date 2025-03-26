@@ -107,12 +107,7 @@ func jsonHandle(c *gin.Context, db Database) {
 		db.Update(metric.MType, metric.ID, *metric.Delta)
 	}
 
-	resp, err := json.Marshal(metric)
-	if err != nil {
-		logger.Log.Error("error while encoding json")
-		c.String(http.StatusInternalServerError, "")
-	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, metric)
 }
 
 // JSONUpdate is a Gin route handler for POST HTTP metric updates
@@ -140,13 +135,7 @@ func returnValue(c *gin.Context, db Database) {
 	if err != nil {
 		logger.Log.Error("error while getting metric from db")
 	}
-
-	resp, err := json.Marshal(respMetric)
-	if err != nil {
-		logger.Log.Error("error while encoding json")
-		c.String(http.StatusInternalServerError, "")
-	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, respMetric)
 }
 
 func JSONValue() gin.HandlerFunc {

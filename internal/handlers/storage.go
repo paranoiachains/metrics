@@ -32,37 +32,39 @@ func (s *MemStorage) Clear() {
 func (s *MemStorage) Update(mtype string, id string, value any) {
 	switch mtype {
 	case "gauge":
-		value := value.(float64)
-		s.Gauge[id] = value
+		v, ok := value.(float64)
+		if !ok {
+			return
+		}
+		s.Gauge[id] = v
 
 	case "counter":
-		value := value.(int64)
-		s.Counter[id] += value
+		v, ok := value.(int64)
+		if !ok {
+			return
+		}
+		s.Counter[id] += v
 	}
 }
 
 func (s MemStorage) Return(mtype string, id string) (*collector.Metric, error) {
-	metric := new(collector.Metric)
 	switch mtype {
 	case "gauge":
 		v, ok := s.Gauge[id]
 		if !ok {
 			return nil, fmt.Errorf("no such gauge metric")
 		}
-		metric.ID = id
-		metric.MType = mtype
-		metric.Value = &v
+		return &collector.Metric{ID: id, MType: mtype, Value: &v}, nil
 
 	case "counter":
 		v, ok := s.Counter[id]
 		if !ok {
-			return nil, fmt.Errorf("no such gauge metric")
+			return nil, fmt.Errorf("no such counter metric")
 		}
-		metric.ID = id
-		metric.MType = mtype
-		metric.Delta = &v
+		return &collector.Metric{ID: id, MType: mtype, Delta: &v}, nil
 	}
-	return metric, nil
+
+	return &collector.Metric{ID: "Asd", MType: "asd"}, fmt.Errorf("unknown metric type")
 }
 
 var Storage = NewMemStorage()
