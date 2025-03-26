@@ -1,86 +1,81 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/paranoiachains/metrics/internal/collector"
 	"github.com/paranoiachains/metrics/internal/logger"
 )
 
 // update changes the value of global storage and returns a status code
-func update(c *gin.Context, metricType string, db Database) {
-	metricValue := c.Param("metricValue")
-	metricName := c.Param("metricName")
+func update(c *gin.Context, db Database) {
+	var buf bytes.Buffer
+	var metric collector.Metric
 
-	if metricValue == "" {
-		logger.Log.Error("error while extracting metric params")
-		c.String(http.StatusNotFound, "")
-		return
+	_, err := buf.ReadFrom(c.Request.Body)
+	if err != nil {
+		logger.Log.Error("error while reading from request body")
+		c.String(http.StatusInternalServerError, "")
 	}
-
-	switch metricType {
+	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
+		logger.Log.Error("error while decoding json")
+		c.String(http.StatusInternalServerError, "")
+	}
+	switch metric.MType {
 	case "gauge":
-		v, err := strconv.ParseFloat(metricValue, 64)
-		if err != nil {
-			logger.Log.Error("error while parsing float metric val")
-			c.String(http.StatusBadRequest, "")
-			return
-		}
-		db.Update("gauge", metricName, v)
-
+		db.Update(metric.MType, metric.ID, *metric.Value)
 	case "counter":
-		v, err := strconv.ParseInt(metricValue, 10, 64)
-		if err != nil {
-			logger.Log.Error("error while parsing int metric val")
-			c.String(http.StatusBadRequest, "")
-			return
-		}
-		db.Update("counter", metricName, v)
+		db.Update(metric.MType, metric.ID, *metric.Delta)
 	}
-	c.String(http.StatusOK, "")
+
+	resp, err := json.Marshal(metric)
+	if err != nil {
+		logger.Log.Error("error while encoding json")
+		c.String(http.StatusInternalServerError, "")
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Handler is a Gin route handler for POST HTTP metric updates
 func Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
-			logger.Log.Error("invalid metric type")
-			c.String(http.StatusBadRequest, "")
-			return
-		}
-		update(c, c.Param("metricType"), Storage)
+		update(c, Storage)
 	}
 }
 
 // return metric value from storage
-func Return(c *gin.Context) {
-	metricType := c.Param("metricType")
-	metricName := c.Param("metricName")
+func Return(c *gin.Context, db Database) {
+	var buf bytes.Buffer
+	var reqMetric collector.Metric
 
-	switch metricType {
-	case "gauge":
-		retrievedName, ok := Storage.Gauge[metricName]
-		if !ok {
-			logger.Log.Error("no such metric")
-			c.String(http.StatusNotFound, "")
-			return
-		}
-		c.String(200, strconv.FormatFloat(retrievedName, 'g', -1, 64))
+	_, err := buf.ReadFrom(c.Request.Body)
+	if err != nil {
+		logger.Log.Error("error while reading from request body")
+		c.String(http.StatusInternalServerError, "")
+	}
+	if err = json.Unmarshal(buf.Bytes(), &reqMetric); err != nil {
+		logger.Log.Error("error while decoding json")
+		c.String(http.StatusInternalServerError, "")
+	}
+	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
+	if err != nil {
+		logger.Log.Error("error while getting metric from db")
+	}
 
-	case "counter":
-		retrievedName, ok := Storage.Counter[metricName]
-		if !ok {
-			logger.Log.Error("no such metric")
-			c.String(http.StatusNotFound, "")
-			return
-		}
-		logger.Log.Sugar().Infof("sent response: %d", http.StatusOK)
-		c.String(200, strconv.FormatInt(retrievedName, 10))
+	resp, err := json.Marshal(respMetric)
+	if err != nil {
+		logger.Log.Error("error while encoding json")
+		c.String(http.StatusInternalServerError, "")
+	}
+	c.JSON(http.StatusOK, resp)
+}
 
-	default:
-		logger.Log.Error("invalid metric type")
-		c.String(http.StatusBadRequest, "")
+func ReturnWrap() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		Return(c, Storage)
 	}
 }
 

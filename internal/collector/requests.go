@@ -1,21 +1,24 @@
 package collector
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 )
 
 // POST request wrapper
-func NewRequest(url string) error {
-	r, err := http.Post(url, "text/plain", nil)
+func NewRequest(url string, obj []byte) error {
+	r, err := http.Post(url, "application/json", bytes.NewBufferString(string(obj)))
 	if err != nil {
 		return err
 	}
 	if r.StatusCode != http.StatusOK {
 		return fmt.Errorf("metrics_new_request: bad response! got %v, want %v", r.StatusCode, http.StatusOK)
 	}
-	defer r.Body.Close()
+	r.Body.Close()
+
 	return nil
 }
 
@@ -23,16 +26,11 @@ func NewRequest(url string) error {
 func Send(endpoint string) {
 	mu.Lock()
 	defer mu.Unlock()
-	for k, v := range MyMetrics.Gauge {
-		err := NewRequest(fmt.Sprintf("http://%s/update/%s/%s/%v", endpoint, "gauge", k, v))
+	for i := range MyMetrics {
+		obj, _ := json.Marshal(MyMetrics[i])
+		err := NewRequest(fmt.Sprintf("http://%s/update", endpoint), obj)
 		if err != nil {
-			fmt.Println("send_metrics: error sending gauge metric:", err)
-		}
-	}
-	for k, v := range MyMetrics.Counter {
-		err := NewRequest(fmt.Sprintf("http://%s/update/%s/%s/%v", endpoint, "counter", k, v))
-		if err != nil {
-			fmt.Println("send_metrics: error sending counter metric:", err)
+			return
 		}
 	}
 }

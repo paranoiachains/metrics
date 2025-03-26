@@ -9,18 +9,22 @@ import (
 )
 
 var (
-	MyMetrics = Metrics{Gauge: make(map[string]float64), Counter: make(map[string]int64)}
+	MyMetrics Metrics
 	mu        sync.Mutex
+	PollCount int64 = 0
 )
 
-// storage struct
-type Metrics struct {
-	Gauge   map[string]float64
-	Counter map[string]int64
+type Metrics []Metric
+
+type Metric struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
 // fetch runtime stats
-func GetMemStats() map[string]float64 {
+func GetRuntimeStats() map[string]float64 {
 	metrics := runtime.MemStats{}
 	runtime.ReadMemStats(&metrics)
 
@@ -60,25 +64,47 @@ func GetMemStats() map[string]float64 {
 func CompareGauge(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
-	if len(MyMetrics.Gauge) == 0 {
+	if len(MyMetrics) == 0 {
 		return
 	}
+	var delta int64 = 0
+	i := 0
 	for k := range m {
-		if m[k] != MyMetrics.Gauge[k] {
-			MyMetrics.Counter["PollCount"] += 1
+		if m[k] != *MyMetrics[i].Value {
+			i++
+			delta++
 		}
 	}
+	PollCount += delta
 }
 
 // update Gauge
-func UpdateGauge(m map[string]float64) {
+func UpdateMetrics(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
 	for k, v := range m {
-		MyMetrics.Gauge[k] = v
+		MyMetrics = append(MyMetrics, Metric{
+			ID:    k,
+			MType: "gauge",
+			Value: &v,
+		})
 	}
-	// random value gauge variable
-	MyMetrics.Gauge["RandomValue"] = rand.Float64()
+	r := rand.Float64()
+	MyMetrics = append(MyMetrics, Metric{
+		ID:    "RandomValue",
+		MType: "gauge",
+		Value: &r,
+	})
+
+	MyMetrics = append(MyMetrics, Metric{
+		ID:    "PollCount",
+		MType: "counter",
+		Delta: &PollCount,
+	})
+}
+
+func ClearMetrics() {
+	MyMetrics = make(Metrics, 0)
 }
 
 // update metrics storage with interval
@@ -86,11 +112,12 @@ func UpdateWithInterval(pollInterval int) {
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 		// 1. fetch runtime metrics
-		m := GetMemStats()
+		m := GetRuntimeStats()
 		// 2. check what've changed
 		CompareGauge(m)
 		// 3. update metrics storage
-		UpdateGauge(m)
+		ClearMetrics()
+		UpdateMetrics(m)
 		fmt.Println("Metrics updated.")
 	}
 }

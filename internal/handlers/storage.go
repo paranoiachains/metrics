@@ -1,5 +1,11 @@
 package handlers
 
+import (
+	"fmt"
+
+	"github.com/paranoiachains/metrics/internal/collector"
+)
+
 // store values (temporary choice)
 type MemStorage struct {
 	Gauge   map[string]float64
@@ -7,7 +13,8 @@ type MemStorage struct {
 }
 
 type Database interface {
-	Update(valueType string, name string, value any)
+	Update(mtype string, id string, value any)
+	Return(mtype string, id string) (*collector.Metric, error)
 }
 
 func NewMemStorage() *MemStorage {
@@ -22,16 +29,40 @@ func (s *MemStorage) Clear() {
 	s.Counter = make(map[string]int64)
 }
 
-func (s *MemStorage) Update(valueType string, name string, value any) {
-	switch valueType {
+func (s *MemStorage) Update(mtype string, id string, value any) {
+	switch mtype {
 	case "gauge":
 		value := value.(float64)
-		s.Gauge[name] = value
+		s.Gauge[id] = value
 
 	case "counter":
 		value := value.(int64)
-		s.Counter[name] += value
+		s.Counter[id] += value
 	}
+}
+
+func (s MemStorage) Return(mtype string, id string) (*collector.Metric, error) {
+	metric := new(collector.Metric)
+	switch mtype {
+	case "gauge":
+		v, ok := s.Gauge[id]
+		if !ok {
+			return nil, fmt.Errorf("no such gauge metric")
+		}
+		metric.ID = id
+		metric.MType = mtype
+		metric.Value = &v
+
+	case "counter":
+		v, ok := s.Counter[id]
+		if !ok {
+			return nil, fmt.Errorf("no such gauge metric")
+		}
+		metric.ID = id
+		metric.MType = mtype
+		metric.Delta = &v
+	}
+	return metric, nil
 }
 
 var Storage = NewMemStorage()

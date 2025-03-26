@@ -24,8 +24,8 @@ func main() {
 	templatesPath, _ := filepath.Abs("../../templates/index.html")
 	r.LoadHTMLFiles(templatesPath)
 
-	r.POST("/update/:metricType/:metricName/:metricValue", handlers.Handler())
-	r.GET("/value/:metricType/:metricName/", handlers.Return)
+	r.POST("/update", handlers.Handler())
+	r.POST("/value", handlers.ReturnWrap())
 	r.GET("/", handlers.ReturnAll)
 	r.Run(flags.ServerEndpoint)
 }
