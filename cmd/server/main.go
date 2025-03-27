@@ -26,8 +26,8 @@ func main() {
 
 	r.GET("/", handlers.HTMLReturnAll)
 
-	r.POST("/update", handlers.JSONUpdate())
-	r.POST("/value", handlers.JSONValue())
+	r.POST("/update/", handlers.JSONUpdate())
+	r.POST("/value/", handlers.JSONValue())
 
 	r.POST("/update/:metricType/:metricName/:metricValue", handlers.URLUpdate())
 	r.GET("/value/:metricType/:metricName/", handlers.URLValue)

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/collector"
 	"github.com/paranoiachains/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
 func urlHandle(c *gin.Context, metricType string, db Database) {
@@ -92,12 +93,14 @@ func jsonHandle(c *gin.Context, db Database) {
 	var metric collector.Metric
 
 	_, err := buf.ReadFrom(c.Request.Body)
+	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
 		logger.Log.Error("error while reading from request body")
 		c.String(http.StatusInternalServerError, "")
 	}
+	logger.Log.Info("Raw request body:", zap.ByteString("body", buf.Bytes()))
 	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
-		logger.Log.Error("error while decoding json")
+		logger.Log.Error("error while decoding json", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 	}
 	switch metric.MType {
@@ -123,17 +126,21 @@ func returnValue(c *gin.Context, db Database) {
 	var reqMetric collector.Metric
 
 	_, err := buf.ReadFrom(c.Request.Body)
+	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
 		logger.Log.Error("error while reading from request body")
 		c.String(http.StatusInternalServerError, "")
+		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &reqMetric); err != nil {
 		logger.Log.Error("error while decoding json")
 		c.String(http.StatusInternalServerError, "")
+		return
 	}
 	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
 	if err != nil {
 		logger.Log.Error("error while getting metric from db")
+		return
 	}
 	c.JSON(http.StatusOK, respMetric)
 }
