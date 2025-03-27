@@ -100,6 +100,8 @@ func CompareGauge(m map[string]float64) {
 func UpdateMetrics(m map[string]float64) {
 	mu.Lock()
 	defer mu.Unlock()
+	ClearMetrics()
+
 	for k, v := range m {
 		MyMetrics = append(MyMetrics, Metric{
 			ID:    k,
@@ -107,6 +109,7 @@ func UpdateMetrics(m map[string]float64) {
 			Value: &v,
 		})
 	}
+
 	r := rand.Float64()
 	MyMetrics = append(MyMetrics, Metric{
 		ID:    "RandomValue",
@@ -114,10 +117,11 @@ func UpdateMetrics(m map[string]float64) {
 		Value: &r,
 	})
 
+	pc := PollCount
 	MyMetrics = append(MyMetrics, Metric{
 		ID:    "PollCount",
 		MType: "counter",
-		Delta: &PollCount,
+		Delta: &pc,
 	})
 }
 
@@ -134,7 +138,6 @@ func UpdateWithInterval(pollInterval int) {
 		// 2. check what've changed
 		CompareGauge(m)
 		// 3. update metrics storage
-		ClearMetrics()
 		UpdateMetrics(m)
 		fmt.Println("Metrics updated.")
 	}

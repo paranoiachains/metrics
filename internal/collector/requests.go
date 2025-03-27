@@ -28,7 +28,7 @@ func Send(endpoint string) {
 	defer mu.Unlock()
 	for i := range MyMetrics {
 		obj, _ := json.Marshal(MyMetrics[i])
-		err := NewRequest(fmt.Sprintf("http://%s/update", endpoint), obj)
+		err := NewRequest(fmt.Sprintf("http://%s/update/", endpoint), obj)
 		if err != nil {
 			return
 		}

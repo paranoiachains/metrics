@@ -158,16 +158,35 @@ func TestJSONValue(t *testing.T) {
 			},
 			description: "Store and retrieve counter metric",
 		},
+		{
+			name:   "pollcount 0?",
+			metric: "counter",
+			sendBody: `{
+				"id": "PollCount",
+				"type": "counter",
+				"delta": 0
+			}`,
+			getBody: `{
+				"id": "PollCount",
+				"type": "counter"
+			}`,
+			want: want{
+				contentType: "application/json; charset=utf-8",
+				statusCode:  200,
+				body:        `{"id":"PollCount","type":"counter","delta":0}`,
+			},
+			description: "pollcount error",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := gin.Default()
-			r.POST("/update", JSONUpdate())
-			r.POST("/value", JSONValue())
+			r.POST("/update/", JSONUpdate())
+			r.POST("/value/", JSONValue())
 
 			if tt.sendBody != "" {
-				sendRequest := httptest.NewRequest("POST", "/update", bytes.NewBuffer([]byte(tt.sendBody)))
+				sendRequest := httptest.NewRequest("POST", "/update/", bytes.NewBuffer([]byte(tt.sendBody)))
 				sendRequest.Header.Set("Content-Type", "application/json")
 
 				sendRecorder := httptest.NewRecorder()
@@ -176,7 +195,7 @@ func TestJSONValue(t *testing.T) {
 				assert.Equal(t, 200, sendRecorder.Code, "Failed to store metric")
 			}
 
-			request := httptest.NewRequest("POST", "/value", bytes.NewBuffer([]byte(tt.getBody)))
+			request := httptest.NewRequest("POST", "/value/", bytes.NewBuffer([]byte(tt.getBody)))
 			request.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
