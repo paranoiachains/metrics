@@ -98,16 +98,28 @@ func jsonHandle(c *gin.Context, db Database) {
 		logger.Log.Error("error while reading from request body")
 		c.String(http.StatusInternalServerError, "")
 	}
-	logger.Log.Info("Raw request body:", zap.ByteString("body", buf.Bytes()))
 	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		logger.Log.Error("error while decoding json", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
+	}
+	logger.Log.Info("unmarshalled sent metric:", zap.Object("metric", metric))
+	if metric.ID == "" {
+		logger.Log.Error("metric id not found", zap.String("metric id", metric.ID))
+		c.String(http.StatusNotFound, "")
+		return
+	}
+	if metric.Delta == nil && metric.Value == nil {
+		logger.Log.Error("no metric value!")
+		c.String(http.StatusBadRequest, "")
+		return
 	}
 	switch metric.MType {
 	case "gauge":
 		db.Update(metric.MType, metric.ID, *metric.Value)
 	case "counter":
 		db.Update(metric.MType, metric.ID, *metric.Delta)
+	default:
+		c.String(http.StatusBadRequest, "")
 	}
 
 	c.JSON(http.StatusOK, metric)
@@ -137,7 +149,14 @@ func returnValue(c *gin.Context, db Database) {
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
+	logger.Log.Info("unmarshalled metric:", zap.Object("metric", reqMetric))
+	if reqMetric.ID == "" {
+		logger.Log.Error("metric id not found", zap.String("metric id", reqMetric.ID))
+		c.String(http.StatusNotFound, "")
+		return
+	}
 	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
+	logger.Log.Info("metric returned from db:", zap.Object("metric", respMetric))
 	if err != nil {
 		logger.Log.Error("error while getting metric from db")
 		return

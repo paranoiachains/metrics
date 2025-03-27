@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -21,6 +23,22 @@ type Metric struct {
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
+func (m Metric) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("id", m.ID)
+	enc.AddString("type", m.MType)
+	if m.Value != nil {
+		enc.AddFloat64("value", *m.Value)
+	} else {
+		enc.AddString("value", "nil")
+	}
+	if m.Delta != nil {
+		enc.AddInt64("delta", *m.Delta)
+	} else {
+		enc.AddString("delta", "nil")
+	}
+	return nil
 }
 
 // fetch runtime stats
