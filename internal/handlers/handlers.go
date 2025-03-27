@@ -96,12 +96,13 @@ func jsonHandle(c *gin.Context, db Database) {
 	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
 		logger.Log.Error("error while reading from request body")
-		c.String(http.StatusInternalServerError, "")
+		c.String(http.StatusNotFound, "")
 		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		logger.Log.Error("error while decoding json", zap.Error(err))
-		c.String(http.StatusInternalServerError, "")
+		c.String(http.StatusNotFound, "")
+		return
 	}
 	// logger.Log.Info("unmarshalled sent metric:", zap.Object("metric", metric))
 	if metric.ID == "" {
