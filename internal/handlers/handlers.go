@@ -103,7 +103,7 @@ func jsonHandle(c *gin.Context, db Database) {
 		logger.Log.Error("error while decoding json", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 	}
-	logger.Log.Info("unmarshalled sent metric:", zap.Object("metric", metric))
+	// logger.Log.Info("unmarshalled sent metric:", zap.Object("metric", metric))
 	if metric.ID == "" {
 		logger.Log.Error("metric id not found", zap.String("metric id", metric.ID))
 		c.String(http.StatusNotFound, "")
@@ -157,7 +157,7 @@ func returnValue(c *gin.Context, db Database) {
 		return
 	}
 	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
-	logger.Log.Info("metric returned from db:", zap.Object("metric", respMetric))
+	// logger.Log.Info("metric returned from db:", zap.Object("metric", respMetric))
 	if err != nil {
 		logger.Log.Error("error while getting metric from db")
 		c.String(http.StatusNotFound, "")
