@@ -97,6 +97,7 @@ func jsonHandle(c *gin.Context, db Database) {
 	if err != nil {
 		logger.Log.Error("error while reading from request body")
 		c.String(http.StatusInternalServerError, "")
+		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		logger.Log.Error("error while decoding json", zap.Error(err))
@@ -146,7 +147,7 @@ func returnValue(c *gin.Context, db Database) {
 	}
 	if err = json.Unmarshal(buf.Bytes(), &reqMetric); err != nil {
 		logger.Log.Error("error while decoding json")
-		c.String(http.StatusInternalServerError, "")
+		c.String(http.StatusBadRequest, "")
 		return
 	}
 	logger.Log.Info("unmarshalled metric:", zap.Object("metric", reqMetric))
@@ -159,6 +160,7 @@ func returnValue(c *gin.Context, db Database) {
 	logger.Log.Info("metric returned from db:", zap.Object("metric", respMetric))
 	if err != nil {
 		logger.Log.Error("error while getting metric from db")
+		c.String(http.StatusNotFound, "")
 		return
 	}
 	c.JSON(http.StatusOK, respMetric)
