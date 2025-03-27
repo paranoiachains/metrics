@@ -64,7 +64,7 @@ func (s MemStorage) Return(mtype string, id string) (*collector.Metric, error) {
 		return &collector.Metric{ID: id, MType: mtype, Delta: &v}, nil
 	}
 
-	return &collector.Metric{ID: "Asd", MType: "asd"}, fmt.Errorf("unknown metric type")
+	return &collector.Metric{ID: id, MType: mtype}, fmt.Errorf("unknown metric type")
 }
 
 var Storage = NewMemStorage()
