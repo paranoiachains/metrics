@@ -1,8 +1,6 @@
 package main
 
 import (
-	"path/filepath"
-
 	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/flags"
 	"github.com/paranoiachains/metrics/internal/handlers"
@@ -19,9 +17,6 @@ func main() {
 
 	r := gin.New()
 	r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
-
-	templatesPath, _ := filepath.Abs("../../templates/index.html")
-	r.LoadHTMLFiles(templatesPath)
 
 	r.GET("/", handlers.HTMLReturnAll)
 
