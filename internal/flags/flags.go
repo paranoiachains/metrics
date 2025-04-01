@@ -12,12 +12,19 @@ var ServerEndpoint string
 var ClientEndpoint string
 var ReportInterval int
 var PollInterval int
+var EncodingEnabled bool
+
 var Cfg Config
 
 type Config struct {
 	Address        string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+}
+
+func init() {
+	ParseAgentFlags()
+	ParseServerFlags()
 }
 
 func ParseEnv() {
@@ -40,9 +47,10 @@ func ParseServerFlags() {
 }
 
 func ParseAgentFlags() {
-	clientFlags := flag.NewFlagSet("", flag.ExitOnError)
-	clientFlags.StringVar(&ClientEndpoint, "a", "localhost:8080", "Set client endpoint")
-	clientFlags.IntVar(&ReportInterval, "r", 10, "Set report interval")
-	clientFlags.IntVar(&PollInterval, "p", 2, "Set poll interval")
-	clientFlags.Parse(os.Args[1:])
+	agentFlags := flag.NewFlagSet("", flag.ExitOnError)
+	agentFlags.StringVar(&ClientEndpoint, "a", "localhost:8080", "Set client endpoint")
+	agentFlags.IntVar(&ReportInterval, "r", 10, "Set report interval")
+	agentFlags.IntVar(&PollInterval, "p", 2, "Set poll interval")
+	agentFlags.BoolVar(&EncodingEnabled, "e", true, "enable gzip encoding of http requests")
+	agentFlags.Parse(os.Args[1:])
 }
