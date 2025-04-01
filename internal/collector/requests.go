@@ -49,7 +49,6 @@ func NewRequest(url string, obj []byte) error {
 	}
 	defer resp.Body.Close()
 
-	// Проверка статуса ответа
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad response! got %v, want %v", resp.StatusCode, http.StatusOK)
 	}

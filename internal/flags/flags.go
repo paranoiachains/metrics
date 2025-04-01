@@ -25,6 +25,7 @@ type Config struct {
 func init() {
 	ParseAgentFlags()
 	ParseServerFlags()
+	ParseEnv()
 }
 
 func ParseEnv() {
