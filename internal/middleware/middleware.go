@@ -20,6 +20,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		method := c.Request.Method
+		encoding := c.Request.Header.Get("Accept-Encoding")
 
 		c.Next()
 
@@ -29,6 +30,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 			zap.String("method", method),
 			zap.String("path", path),
 			zap.Duration("duration", duration),
+			zap.String("Accept-Encoding", encoding),
 		)
 		logger.Log.Info("HTTP Response",
 			zap.Int("status", c.Writer.Status()),
@@ -39,8 +41,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 }
 
 func shouldCompress(req *http.Request) bool {
-	return strings.Contains(req.Header.Get("Accept-Encoding"), "gzip") &&
-		(strings.Contains(req.Header.Get("Content-Type"), "application/json") || strings.Contains(req.Header.Get("Content-Type"), "text/html"))
+	return strings.Contains(req.Header.Get("Accept-Encoding"), "gzip")
 }
 
 func shouldDecompress(req *http.Request) bool {
