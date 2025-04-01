@@ -174,8 +174,16 @@ func JSONValue() gin.HandlerFunc {
 }
 
 func HTMLReturnAll(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.html", gin.H{
-		"message": "Collected Metrics",
-		"metrics": Storage,
-	})
+	c.Header("Content-Type", "text/html")
+	c.String(http.StatusOK, `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>{{ .message }}</h1>
+    <p>{{ .metrics }}</p>
+</body>
+</html>`)
 }

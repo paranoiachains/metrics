@@ -2,22 +2,56 @@ package collector
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/paranoiachains/metrics/internal/flags"
 )
 
 // POST request wrapper
 func NewRequest(url string, obj []byte) error {
-	r, err := http.Post(url, "application/json", bytes.NewBufferString(string(obj)))
+	var reqBody *bytes.Buffer
+	reqBody = bytes.NewBuffer(obj)
+
+	// if gzip encoding enabled - encode.
+	if flags.EncodingEnabled {
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		_, err := gz.Write(obj)
+		if err != nil {
+			return fmt.Errorf("gzip compression error: %v", err)
+		}
+		gz.Close()
+		reqBody = &buf
+	}
+
+	// new request
+	req, err := http.NewRequest("POST", url, reqBody)
 	if err != nil {
-		return err
+		return fmt.Errorf("request creation failed: %v", err)
 	}
-	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("metrics_new_request: bad response! got %v, want %v", r.StatusCode, http.StatusOK)
+
+	// setting headers
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Content-Type", "application/json")
+	if flags.EncodingEnabled {
+		req.Header.Set("Content-Encoding", "gzip")
 	}
-	r.Body.Close()
+
+	// send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad response! got %v, want %v", resp.StatusCode, http.StatusOK)
+	}
 
 	return nil
 }
@@ -26,11 +60,17 @@ func NewRequest(url string, obj []byte) error {
 func Send(endpoint string) {
 	mu.Lock()
 	defer mu.Unlock()
+
 	for i := range MyMetrics {
-		obj, _ := json.Marshal(MyMetrics[i])
-		err := NewRequest(fmt.Sprintf("http://%s/update/", endpoint), obj)
+		obj, err := json.Marshal(MyMetrics[i])
 		if err != nil {
-			return
+			fmt.Println("JSON marshaling error:", err)
+			continue
+		}
+
+		err = NewRequest(fmt.Sprintf("http://%s/update/", endpoint), obj)
+		if err != nil {
+			fmt.Println("Failed to send request:", err)
 		}
 	}
 }
