@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	flags.ParseServerFlags()
 	if flags.Cfg.Address != "" {
 		flags.ServerEndpoint = flags.Cfg.Address
 	}

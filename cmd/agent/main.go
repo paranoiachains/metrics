@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	flags.ParseAgentFlags()
 	if flags.Cfg.Address != "" {
 		flags.ClientEndpoint = flags.Cfg.Address
 	}
