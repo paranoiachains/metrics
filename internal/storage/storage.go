@@ -142,7 +142,6 @@ func (s *MemStorage) Restore(filename string) error {
 		switch metric.MType {
 		case "gauge":
 			s.Gauge[metric.ID] = *metric.Value
-			fmt.Printf("Decoded metric: %v", s.Gauge[metric.ID])
 		case "counter":
 			s.Counter[metric.ID] = *metric.Delta
 		}

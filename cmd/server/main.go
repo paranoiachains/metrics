@@ -14,7 +14,9 @@ import (
 
 func main() {
 	flags.ParseServerFlags()
-	fmt.Printf("Restore?: %v", flags.Restore)
+	fmt.Printf("Restore?: %v\n", flags.Restore)
+	fmt.Printf("Path: %v\n", flags.FileStoragePath)
+	fmt.Printf("Interval: %v\n", flags.StoreInterval)
 	if !flags.Restore {
 		storage.Storage.Clear()
 		_, err := os.Create(flags.FileStoragePath)
