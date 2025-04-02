@@ -162,11 +162,11 @@ func WriteWithInterval(file FileHandler, filename string, storeInterval int) {
 		storeInterval = 1
 	}
 	for {
-		time.Sleep(time.Duration(storeInterval) * time.Second)
 		file.ClearFile(filename)
 		if err := file.Write(filename); err != nil {
 			log.Fatal(err)
 		}
+		time.Sleep(time.Duration(storeInterval) * time.Second)
 	}
 }
 
