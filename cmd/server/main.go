@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -16,11 +15,10 @@ func main() {
 	flags.ParseServerFlags()
 	if !flags.Restore {
 		storage.Storage.Clear()
-		file, err := os.Create(flags.FileStoragePath)
+		_, err := os.Create(flags.FileStoragePath)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
 	} else {
 		storage.Storage.Restore(flags.FileStoragePath)
 	}
@@ -29,7 +27,6 @@ func main() {
 		flags.ServerEndpoint = flags.Cfg.Address
 	}
 
-	fmt.Println("asd")
 	go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
 
 	r := gin.New()
@@ -47,6 +44,4 @@ func main() {
 	r.GET("/value/:metricType/:metricName/", handlers.URLValue)
 
 	r.Run(flags.ServerEndpoint)
-	fmt.Println("asd")
-	go storage.WriteWithInterval(storage.Storage, flags.Cfg.FileStoragePath, flags.StoreInterval)
 }
