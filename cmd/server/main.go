@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -13,6 +14,7 @@ import (
 
 func main() {
 	flags.ParseServerFlags()
+	fmt.Printf("Restore?: %v", flags.Restore)
 	if !flags.Restore {
 		storage.Storage.Clear()
 		_, err := os.Create(flags.FileStoragePath)

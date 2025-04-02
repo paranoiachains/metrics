@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/collector"
@@ -153,6 +154,10 @@ func returnValue(c *gin.Context, db storage.Database) {
 		return
 	}
 	logger.Log.Info("unmarshalled metric:", zap.Object("metric", reqMetric))
+	// debugging
+	if strings.Contains(reqMetric.ID, "GetSet") {
+		logger.Log.Info("current state of db", zap.Any("storage", storage.Storage))
+	}
 	if reqMetric.ID == "" {
 		logger.Log.Error("metric id not found", zap.String("metric id", reqMetric.ID))
 		c.String(http.StatusNotFound, "")

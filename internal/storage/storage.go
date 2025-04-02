@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/paranoiachains/metrics/internal/collector"
-	"github.com/paranoiachains/metrics/internal/flags"
 )
 
 // store values (temporary choice)
@@ -159,7 +158,6 @@ func (s *MemStorage) ClearFile(filename string) error {
 }
 
 func WriteWithInterval(file FileHandler, filename string, storeInterval int) {
-	fmt.Println(storeInterval, flags.ReportInterval)
 	// lol
 	if storeInterval == 0 {
 		storeInterval = 1
