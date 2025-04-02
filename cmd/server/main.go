@@ -14,6 +14,7 @@ import (
 
 func main() {
 	flags.ParseServerFlags()
+	os.Mkdir("../../tmp", 0666)
 	fmt.Printf("Restore?: %v\n", flags.Restore)
 	fmt.Printf("Path: %v\n", flags.FileStoragePath)
 	fmt.Printf("Interval: %v\n", flags.StoreInterval)
