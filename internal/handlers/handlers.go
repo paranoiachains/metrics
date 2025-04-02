@@ -9,10 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/collector"
 	"github.com/paranoiachains/metrics/internal/logger"
+	"github.com/paranoiachains/metrics/internal/storage"
 	"go.uber.org/zap"
 )
 
-func urlHandle(c *gin.Context, metricType string, db Database) {
+func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 	metricValue := c.Param("metricValue")
 	metricName := c.Param("metricName")
 
@@ -52,7 +53,7 @@ func URLUpdate() gin.HandlerFunc {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		urlHandle(c, c.Param("metricType"), Storage)
+		urlHandle(c, c.Param("metricType"), storage.Storage)
 	}
 }
 
@@ -63,7 +64,7 @@ func URLValue(c *gin.Context) {
 
 	switch metricType {
 	case "gauge":
-		retrievedName, ok := Storage.Gauge[metricName]
+		retrievedName, ok := storage.Storage.Gauge[metricName]
 		if !ok {
 			logger.Log.Error("no such metric")
 			c.String(http.StatusNotFound, "")
@@ -72,7 +73,7 @@ func URLValue(c *gin.Context) {
 		c.String(200, strconv.FormatFloat(retrievedName, 'g', -1, 64))
 
 	case "counter":
-		retrievedName, ok := Storage.Counter[metricName]
+		retrievedName, ok := storage.Storage.Counter[metricName]
 		if !ok {
 			logger.Log.Error("no such metric")
 			c.String(http.StatusNotFound, "")
@@ -88,7 +89,7 @@ func URLValue(c *gin.Context) {
 }
 
 // jsonHandle changes the value of global storage and returns a status code
-func jsonHandle(c *gin.Context, db Database) {
+func jsonHandle(c *gin.Context, db storage.Database) {
 	var buf bytes.Buffer
 	var metric collector.Metric
 
@@ -130,12 +131,12 @@ func jsonHandle(c *gin.Context, db Database) {
 // JSONUpdate is a Gin route handler for POST HTTP metric updates
 func JSONUpdate() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		jsonHandle(c, Storage)
+		jsonHandle(c, storage.Storage)
 	}
 }
 
 // return metric returnValue from storage
-func returnValue(c *gin.Context, db Database) {
+func returnValue(c *gin.Context, db storage.Database) {
 	var buf bytes.Buffer
 	var reqMetric collector.Metric
 
@@ -169,21 +170,22 @@ func returnValue(c *gin.Context, db Database) {
 
 func JSONValue() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		returnValue(c, Storage)
+		returnValue(c, storage.Storage)
 	}
 }
 
 func HTMLReturnAll(c *gin.Context) {
 	c.Header("Content-Type", "text/html")
-	c.String(http.StatusOK, `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-    <h1>{{ .message }}</h1>
-    <p>{{ .metrics }}</p>
-</body>
-</html>`)
+	c.String(http.StatusOK,
+		`<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		</head>
+		<body>
+			<h1>{{ .message }}</h1>
+			<p>{{ .metrics }}</p>
+		</body>
+		</html>`)
 }

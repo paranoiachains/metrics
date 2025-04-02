@@ -34,7 +34,6 @@ func LoggerMiddleware() gin.HandlerFunc {
 		)
 		logger.Log.Info("HTTP Response",
 			zap.Int("status", c.Writer.Status()),
-			zap.Int("size", c.Writer.Size()),
 			zap.String("Content-Type", c.Writer.Header().Get("Content-Type")),
 		)
 	}
