@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/paranoiachains/metrics/internal/collector"
+	"github.com/paranoiachains/metrics/internal/flags"
 )
 
 // store values (temporary choice)
@@ -139,10 +140,10 @@ func (s *MemStorage) Restore(filename string) error {
 			}
 			return err
 		}
-
 		switch metric.MType {
 		case "gauge":
 			s.Gauge[metric.ID] = *metric.Value
+			fmt.Printf("Decoded metric: %v", s.Gauge[metric.ID])
 		case "counter":
 			s.Counter[metric.ID] = *metric.Delta
 		}
@@ -158,6 +159,11 @@ func (s *MemStorage) ClearFile(filename string) error {
 }
 
 func WriteWithInterval(file FileHandler, filename string, storeInterval int) {
+	fmt.Println(storeInterval, flags.ReportInterval)
+	// lol
+	if storeInterval == 0 {
+		storeInterval = 1
+	}
 	for {
 		time.Sleep(time.Duration(storeInterval) * time.Second)
 		file.ClearFile(filename)
