@@ -70,7 +70,7 @@ func GzipMiddleware() gin.HandlerFunc {
 			c.Header("Content-Length", "0")
 			gz.Close()
 		}()
-		logger.Log.Info("gzip", zap.Bool("compressed", true), zap.Int("size", c.Writer.Size()))
+		logger.Log.Info("gzip", zap.Bool("compressed", true))
 		c.Next()
 	}
 }
