@@ -1,28 +1,32 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/paranoiachains/metrics/internal/flags"
 	"github.com/paranoiachains/metrics/internal/handlers"
+	"github.com/paranoiachains/metrics/internal/logger"
 	"github.com/paranoiachains/metrics/internal/middleware"
 	"github.com/paranoiachains/metrics/internal/storage"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger.Initialize()
+
 	flags.ParseServerFlags()
+	logger.Log.Info("flags",
+		zap.Bool("Restore?", flags.Restore),
+		zap.String("Path", flags.FileStoragePath),
+		zap.Int("Store interval", flags.StoreInterval))
+
 	os.Mkdir("../../tmp", 0666)
-	fmt.Printf("Restore?: %v\n", flags.Restore)
-	fmt.Printf("Path: %v\n", flags.FileStoragePath)
-	fmt.Printf("Interval: %v\n", flags.StoreInterval)
 	if !flags.Restore {
 		storage.Storage.Clear()
 		_, err := os.Create(flags.FileStoragePath)
 		if err != nil {
-			log.Fatal(err)
+			logger.Log.Error("error", zap.Error(err))
 		}
 	} else {
 		storage.Storage.Restore(flags.FileStoragePath)

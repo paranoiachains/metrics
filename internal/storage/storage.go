@@ -87,24 +87,26 @@ func (s MemStorage) Write(filename string) error {
 	}
 	defer file.Close()
 
+	var metrics collector.Metrics
 	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
 	for name := range s.Gauge {
 		metric, err := s.Return("gauge", name)
 		if err != nil {
 			return err
 		}
-		if err := encoder.Encode(metric); err != nil {
-			return err
-		}
+		metrics = append(metrics, *metric)
 	}
+
 	for name := range s.Counter {
 		metric, err := s.Return("counter", name)
 		if err != nil {
 			return err
 		}
-		if err := encoder.Encode(metric); err != nil {
-			return err
-		}
+		metrics = append(metrics, *metric)
+	}
+	if err := encoder.Encode(metrics); err != nil {
+		return err
 	}
 	return nil
 }
@@ -132,18 +134,20 @@ func (s *MemStorage) Restore(filename string) error {
 
 	decoder := json.NewDecoder(file)
 	for {
-		var metric collector.Metric
-		if err := decoder.Decode(&metric); err != nil {
+		var metrics collector.Metrics
+		if err := decoder.Decode(&metrics); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-		switch metric.MType {
-		case "gauge":
-			s.Gauge[metric.ID] = *metric.Value
-		case "counter":
-			s.Counter[metric.ID] = *metric.Delta
+		for _, metric := range metrics {
+			switch metric.MType {
+			case "gauge":
+				s.Gauge[metric.ID] = *metric.Value
+			case "counter":
+				s.Counter[metric.ID] = *metric.Delta
+			}
 		}
 	}
 	return nil
@@ -161,6 +165,7 @@ func WriteWithInterval(file FileHandler, filename string, storeInterval int) {
 	if storeInterval == 0 {
 		storeInterval = 1
 	}
+	// doesnt work without this line idk why
 	time.Sleep(time.Second)
 	for {
 		file.ClearFile(filename)
