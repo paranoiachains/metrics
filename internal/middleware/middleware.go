@@ -34,7 +34,6 @@ func LoggerMiddleware() gin.HandlerFunc {
 		)
 		logger.Log.Info("HTTP Response",
 			zap.Int("status", c.Writer.Status()),
-			zap.Int("size", c.Writer.Size()),
 			zap.String("Content-Type", c.Writer.Header().Get("Content-Type")),
 		)
 	}
@@ -71,7 +70,7 @@ func GzipMiddleware() gin.HandlerFunc {
 			c.Header("Content-Length", "0")
 			gz.Close()
 		}()
-		logger.Log.Info("gzip", zap.Bool("compressed", true), zap.Int("size", c.Writer.Size()))
+		logger.Log.Info("gzip", zap.Bool("compressed", true))
 		c.Next()
 	}
 }

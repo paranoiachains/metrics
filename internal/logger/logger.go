@@ -10,7 +10,17 @@ import (
 var Log *zap.Logger = zap.NewNop()
 
 func Initialize() error {
-	cfg := zap.NewProductionConfig()
+	cfg := zap.Config{
+		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
+		Development: false,
+		Sampling: &zap.SamplingConfig{
+			Initial:    100,
+			Thereafter: 100,
+		},
+		Encoding:         "json",
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
 	cfg.EncoderConfig = zapcore.EncoderConfig{
 		LevelKey:       "level",
 		NameKey:        "logger",
