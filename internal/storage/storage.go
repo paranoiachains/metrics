@@ -185,7 +185,9 @@ func ConnectAndPing(driverName string, dataSourceName string) (*sql.DB, error) {
 	}
 
 	// ping
-	if err := db.PingContext(context.Background()); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 
