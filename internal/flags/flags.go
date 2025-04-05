@@ -69,7 +69,7 @@ func ParseServerFlags() {
 	serverFlags.IntVar(&StoreInterval, "i", 300, "store interval of metric in seconds")
 	serverFlags.StringVar(&FileStoragePath, "f", "tmp/metrics-db.json", "storage file path path")
 	serverFlags.BoolVar(&Restore, "r", true, "restore previous metrics")
-	serverFlags.StringVar(&DBEndpoint, "d", "localhost", "database endpoint")
+	serverFlags.StringVar(&DBEndpoint, "d", "postgres://postgres:postgres@localhost:5432/metrics", "database endpoint")
 	serverFlags.Parse(os.Args[1:])
 }
 
