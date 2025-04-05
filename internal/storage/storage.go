@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -174,6 +176,20 @@ func WriteWithInterval(file FileHandler, filename string, storeInterval int) {
 		}
 		time.Sleep(time.Duration(storeInterval) * time.Second)
 	}
+}
+
+func ConnectAndPing(driverName string, dataSourceName string) (*sql.DB, error) {
+	db, err := sql.Open(driverName, dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// ping
+	if err := db.PingContext(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 var Storage = NewMemStorage()
