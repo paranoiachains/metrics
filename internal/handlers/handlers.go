@@ -3,12 +3,15 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/paranoiachains/metrics/internal/collector"
+	"github.com/paranoiachains/metrics/internal/flags"
 	"github.com/paranoiachains/metrics/internal/logger"
 	"github.com/paranoiachains/metrics/internal/storage"
 	"go.uber.org/zap"
@@ -106,7 +109,6 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 		c.String(http.StatusNotFound, "")
 		return
 	}
-	// logger.Log.Info("unmarshalled sent metric:", zap.Object("metric", metric))
 	if metric.ID == "" {
 		logger.Log.Error("metric id not found", zap.String("metric id", metric.ID))
 		c.String(http.StatusNotFound, "")
@@ -164,7 +166,6 @@ func returnValue(c *gin.Context, db storage.Database) {
 		return
 	}
 	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
-	// logger.Log.Info("metric returned from db:", zap.Object("metric", respMetric))
 	if err != nil {
 		logger.Log.Error("error while getting metric from db", zap.Error(err))
 		c.String(http.StatusNotFound, "")
@@ -193,4 +194,19 @@ func HTMLReturnAll(c *gin.Context) {
 			<p>{{ .metrics }}</p>
 		</body>
 		</html>`)
+}
+
+func Ping(c *gin.Context) {
+	databaseDSN := flags.DBEndpoint
+	fmt.Println("host: ", databaseDSN)
+	fmt.Println("host env:", flags.Cfg.DBEndpointEnv)
+
+	db, err := storage.ConnectAndPing("pgx", databaseDSN)
+	if err != nil {
+		logger.Log.Error("error while connecting to db", zap.Error(err))
+		c.String(http.StatusInternalServerError, "")
+		return
+	}
+	defer db.Close()
+	c.String(http.StatusOK, "pong")
 }

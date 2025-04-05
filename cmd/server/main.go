@@ -16,12 +16,15 @@ func main() {
 	logger.Initialize()
 
 	flags.ParseServerFlags()
+	flags.ParseEnv()
+
 	logger.Log.Info("flags",
 		zap.Bool("Restore?", flags.Restore),
 		zap.String("Path", flags.FileStoragePath),
-		zap.Int("Store interval", flags.StoreInterval))
+		zap.Int("Store interval", flags.StoreInterval),
+		zap.String("DB endpoint", flags.DBEndpoint))
 
-	os.Mkdir("../../tmp", 0666)
+	os.Mkdir("tmp", 0666)
 	if !flags.Restore {
 		storage.Storage.Clear()
 		_, err := os.Create(flags.FileStoragePath)
@@ -43,6 +46,9 @@ func main() {
 
 	// HTML response
 	r.GET("/", handlers.HTMLReturnAll)
+
+	// Ping Database
+	r.GET("/ping", handlers.Ping)
 
 	// JSON requests
 	r.POST("/update/", handlers.JSONUpdate())
