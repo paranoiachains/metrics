@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/paranoiachains/metrics/internal/collector"
 	"github.com/paranoiachains/metrics/internal/flags"
 	"github.com/paranoiachains/metrics/internal/logger"
