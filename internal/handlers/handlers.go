@@ -202,7 +202,7 @@ func Ping(c *gin.Context) {
 	databaseDSN := flags.DBEndpoint
 	fmt.Println("host: ", databaseDSN)
 
-	db, err := storage.ConnectAndPing("pgx", "postgres://postgres:postgres@localhost:5432/praktikum?sslmode=disable")
+	db, err := storage.ConnectAndPing("pgx", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		logger.Log.Error("error while connecting to db", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
