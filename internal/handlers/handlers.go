@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -198,6 +199,7 @@ func HTMLReturnAll(c *gin.Context) {
 
 func Ping(c *gin.Context) {
 	flags.ParseServerFlags()
+	fmt.Println("DBEndpoint from env 2 from func:", os.Getenv("DATABASE_DSN"))
 
 	databaseDSN := flags.DBEndpoint
 	fmt.Println("host: ", databaseDSN)
