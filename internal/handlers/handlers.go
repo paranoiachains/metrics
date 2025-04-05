@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -199,12 +200,14 @@ func Ping(c *gin.Context) {
 	flags.ParseServerFlags()
 
 	host := flags.DBEndpoint
+	fmt.Println("host: ", host)
 
-	_, err := storage.ConnectAndPing("pgx", host)
+	db, err := storage.ConnectAndPing("pgx", host)
 	if err != nil {
 		logger.Log.Error("error while connecting to db", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
+	defer db.Close()
 	c.String(http.StatusOK, "pong")
 }
