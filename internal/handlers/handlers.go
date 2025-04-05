@@ -200,9 +200,9 @@ func Ping(c *gin.Context) {
 	flags.ParseServerFlags()
 
 	host := flags.DBEndpoint
-	user := flags.Cfg.DBUser
-	password := flags.Cfg.DBPassword
-	name := flags.Cfg.DBName
+	user := "postgres"
+	password := "postgres"
+	name := "metrics"
 	dataSourceName := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", host, user, password, name)
 
 	_, err := storage.ConnectAndPing("pgx", dataSourceName)
