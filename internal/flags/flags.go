@@ -2,6 +2,7 @@ package flags
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -36,6 +37,7 @@ type Config struct {
 
 func init() {
 	ParseEnv()
+	fmt.Println("DBEndpoint from env:", Cfg.DBEndpoint)
 }
 
 func ParseEnv() {
@@ -69,7 +71,7 @@ func ParseServerFlags() {
 	serverFlags.IntVar(&StoreInterval, "i", 300, "store interval of metric in seconds")
 	serverFlags.StringVar(&FileStoragePath, "f", "tmp/metrics-db.json", "storage file path path")
 	serverFlags.BoolVar(&Restore, "r", true, "restore previous metrics")
-	serverFlags.StringVar(&DBEndpoint, "d", "postgres://postgres:postgres@localhost:5432/postgres", "database endpoint")
+	serverFlags.StringVar(&DBEndpoint, "d", "", "database endpoint")
 	serverFlags.Parse(os.Args[1:])
 }
 
