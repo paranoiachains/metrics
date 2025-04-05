@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -200,12 +199,10 @@ func HTMLReturnAll(c *gin.Context) {
 func Ping(c *gin.Context) {
 	flags.ParseServerFlags()
 
-	host := flags.DBEndpoint
-	host = host[3:]
-	fmt.Println("host: ", host)
+	databaseDSN := flags.DBEndpoint
+	fmt.Println("host: ", databaseDSN)
 
-	time.Sleep(time.Second)
-	db, err := storage.ConnectAndPing("pgx", "postgres://postgres:postgres@"+host)
+	db, err := storage.ConnectAndPing("pgx", databaseDSN)
 	if err != nil {
 		logger.Log.Error("error while connecting to db", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
