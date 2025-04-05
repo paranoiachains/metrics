@@ -16,11 +16,13 @@ func main() {
 	logger.Initialize()
 
 	flags.ParseServerFlags()
+	flags.ParseEnv()
 
 	logger.Log.Info("flags",
 		zap.Bool("Restore?", flags.Restore),
 		zap.String("Path", flags.FileStoragePath),
-		zap.Int("Store interval", flags.StoreInterval))
+		zap.Int("Store interval", flags.StoreInterval),
+		zap.String("DB endpoint", flags.DBEndpoint))
 
 	os.Mkdir("tmp", 0666)
 	if !flags.Restore {

@@ -2,7 +2,6 @@ package flags
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -21,23 +20,20 @@ var DBEndpoint string
 
 var Cfg Config
 
+var serverFlags = flag.NewFlagSet("", flag.ExitOnError)
+var agentFlags = flag.NewFlagSet("", flag.ExitOnError)
+
 type Config struct {
+	DBEndpointEnv   string `env:"DATABASE_DSN"`
 	Address         string `env:"ADDRESS"`
 	ReportInterval  int    `env:"REPORT_INTERVAL"`
 	PollInterval    int    `env:"POLL_INTERVAL"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
-
-	DBEndpoint string `env:"DATABASE_DSN"`
-	DBUser     string `env:"DB_USER"`
-	DBPassword string `env:"DB_PASSWORD"`
-	DBName     string `env:"DB_NAME"`
-}
-
-func init() {
-	ParseEnv()
-	fmt.Println("DBEndpoint from env:", Cfg.DBEndpoint)
+	DBUser          string `env:"DB_USER"`
+	DBPassword      string `env:"DB_PASSWORD"`
+	DBName          string `env:"DB_NAME"`
 }
 
 func ParseEnv() {
@@ -57,16 +53,15 @@ func ParseEnv() {
 	if Cfg.FileStoragePath != "" {
 		FileStoragePath = Cfg.FileStoragePath
 	}
-	if Cfg.DBEndpoint != "" {
-		DBEndpoint = Cfg.DBEndpoint
-	}
 	if !Cfg.Restore {
 		Restore = false
+	}
+	if Cfg.DBEndpointEnv != "" {
+		DBEndpoint = Cfg.DBEndpointEnv
 	}
 }
 
 func ParseServerFlags() {
-	serverFlags := flag.NewFlagSet("", flag.ExitOnError)
 	serverFlags.StringVar(&ServerEndpoint, "a", "localhost:8080", "Set server endpoint")
 	serverFlags.IntVar(&StoreInterval, "i", 300, "store interval of metric in seconds")
 	serverFlags.StringVar(&FileStoragePath, "f", "tmp/metrics-db.json", "storage file path path")
@@ -76,7 +71,6 @@ func ParseServerFlags() {
 }
 
 func ParseAgentFlags() {
-	agentFlags := flag.NewFlagSet("", flag.ExitOnError)
 	agentFlags.StringVar(&ClientEndpoint, "a", "localhost:8080", "Set client endpoint")
 	agentFlags.IntVar(&ReportInterval, "r", 10, "Set report interval")
 	agentFlags.IntVar(&PollInterval, "p", 2, "Set poll interval")
