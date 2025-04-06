@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ func main() {
 
 	flags.ParseServerFlags()
 	flags.ParseEnv()
+	fmt.Println("restore env: ", flags.Cfg.Restore, "restore r:", flags.Restore)
 
 	logger.Log.Info("flags",
 		zap.Bool("Restore?", flags.Restore),
@@ -25,7 +27,8 @@ func main() {
 		zap.String("DB endpoint", flags.DBEndpoint),
 	)
 
-	if flags.DBEndpoint != "" {
+	// JSON file storage
+	if flags.DBEndpoint == "" {
 		os.Mkdir("tmp", 0666)
 		if !flags.Restore {
 			storage.Storage.Clear()
