@@ -231,7 +231,6 @@ func (db DBStorage) CreateIfNotExists() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Successfully created table metrics")
 	return nil
 }
 
@@ -256,7 +255,7 @@ func (db DBStorage) Update(mtype string, id string, value any) error {
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.ExecContext(ctx, insertQuery, id, v, nil)
+		_, err := db.ExecContext(ctx, insertQuery, id, mtype, v, nil)
 		if err != nil {
 			return err
 		}
@@ -265,7 +264,7 @@ func (db DBStorage) Update(mtype string, id string, value any) error {
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.Exec(insertQuery, id, nil, v)
+		_, err := db.Exec(insertQuery, id, mtype, nil, v)
 		if err != nil {
 			return err
 		}
@@ -305,7 +304,13 @@ func ConnectAndPing(driverName string, dataSourceName string) (*DBStorage, error
 	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
-
 	fmt.Println("Successfully connected to db")
-	return &DBStorage{db}, nil
+
+	// calling CreateIfNotExists() for every new connection
+	newDb := &DBStorage{db}
+	if err := newDb.CreateIfNotExists(); err != nil {
+		return nil, err
+	}
+	fmt.Println("Successfully")
+	return newDb, nil
 }
