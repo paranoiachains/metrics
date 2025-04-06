@@ -3,10 +3,8 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -51,13 +49,17 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 
 // URLUpdate is a Gin route handler for POST HTTP metric updates
 func URLUpdate() gin.HandlerFunc {
+	s, err := storage.DetermineStorage()
+	if err != nil {
+		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
+	}
 	return func(c *gin.Context) {
 		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
 			logger.Log.Error("invalid metric type")
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		urlHandle(c, c.Param("metricType"), storage.Storage)
+		urlHandle(c, c.Param("metricType"), s)
 	}
 }
 
@@ -133,8 +135,12 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 
 // JSONUpdate is a Gin route handler for POST HTTP metric updates
 func JSONUpdate() gin.HandlerFunc {
+	s, err := storage.DetermineStorage()
+	if err != nil {
+		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
+	}
 	return func(c *gin.Context) {
-		jsonHandle(c, storage.Storage)
+		jsonHandle(c, s)
 	}
 }
 
@@ -156,10 +162,6 @@ func returnValue(c *gin.Context, db storage.Database) {
 		return
 	}
 	logger.Log.Info("unmarshalled metric:", zap.Object("metric", reqMetric))
-	// debugging
-	if strings.Contains(reqMetric.ID, "GetSet") {
-		logger.Log.Info("current state of db", zap.Any("storage", storage.Storage))
-	}
 	if reqMetric.ID == "" {
 		logger.Log.Error("metric id not found", zap.String("metric id", reqMetric.ID))
 		c.String(http.StatusNotFound, "")
@@ -175,8 +177,12 @@ func returnValue(c *gin.Context, db storage.Database) {
 }
 
 func JSONValue() gin.HandlerFunc {
+	s, err := storage.DetermineStorage()
+	if err != nil {
+		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
+	}
 	return func(c *gin.Context) {
-		returnValue(c, storage.Storage)
+		returnValue(c, s)
 	}
 }
 
@@ -198,12 +204,9 @@ func HTMLReturnAll(c *gin.Context) {
 
 func Ping(c *gin.Context) {
 	databaseDSN := flags.DBEndpoint
-	fmt.Println("host: ", databaseDSN)
-	fmt.Println("host env:", flags.Cfg.DBEndpointEnv)
-
 	db, err := storage.ConnectAndPing("pgx", databaseDSN)
 	if err != nil {
-		logger.Log.Error("error while connecting to db", zap.Error(err))
+		logger.Log.Fatal("error while connecting to db", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 		return
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -17,29 +18,34 @@ func main() {
 
 	flags.ParseServerFlags()
 	flags.ParseEnv()
+	fmt.Println("restore env: ", flags.Cfg.Restore, "restore r:", flags.Restore)
 
 	logger.Log.Info("flags",
 		zap.Bool("Restore?", flags.Restore),
 		zap.String("Path", flags.FileStoragePath),
 		zap.Int("Store interval", flags.StoreInterval),
-		zap.String("DB endpoint", flags.DBEndpoint))
+		zap.String("DB endpoint", flags.DBEndpoint),
+	)
 
-	os.Mkdir("tmp", 0666)
-	if !flags.Restore {
-		storage.Storage.Clear()
-		_, err := os.Create(flags.FileStoragePath)
-		if err != nil {
-			logger.Log.Error("error", zap.Error(err))
+	// JSON file storage
+	if flags.DBEndpoint == "" {
+		os.Mkdir("tmp", 0666)
+		if !flags.Restore {
+			storage.Storage.Clear()
+			_, err := os.Create(flags.FileStoragePath)
+			if err != nil {
+				logger.Log.Error("error", zap.Error(err))
+			}
+		} else {
+			storage.Storage.Restore(flags.FileStoragePath)
 		}
-	} else {
-		storage.Storage.Restore(flags.FileStoragePath)
+
+		go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
 	}
 
 	if flags.Cfg.Address != "" {
 		flags.ServerEndpoint = flags.Cfg.Address
 	}
-
-	go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
 
 	r := gin.New()
 	r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
