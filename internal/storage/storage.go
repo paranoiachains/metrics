@@ -307,10 +307,10 @@ func ConnectAndPing(driverName string, dataSourceName string) (*DBStorage, error
 	fmt.Println("Successfully connected to db")
 
 	// calling CreateIfNotExists() for every new connection
-	newDb := &DBStorage{db}
-	if err := newDb.CreateIfNotExists(); err != nil {
+	newDB := &DBStorage{db}
+	if err := newDB.CreateIfNotExists(); err != nil {
 		return nil, err
 	}
 	fmt.Println("Successfully")
-	return newDb, nil
+	return newDB, nil
 }
