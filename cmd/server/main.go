@@ -37,11 +37,11 @@ func main() {
 			storage.Storage.Restore(flags.FileStoragePath)
 		}
 
-		if flags.Cfg.Address != "" {
-			flags.ServerEndpoint = flags.Cfg.Address
-		}
-
 		go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
+	}
+
+	if flags.Cfg.Address != "" {
+		flags.ServerEndpoint = flags.Cfg.Address
 	}
 
 	r := gin.New()
