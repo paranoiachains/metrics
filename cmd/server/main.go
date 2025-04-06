@@ -22,24 +22,27 @@ func main() {
 		zap.Bool("Restore?", flags.Restore),
 		zap.String("Path", flags.FileStoragePath),
 		zap.Int("Store interval", flags.StoreInterval),
-		zap.String("DB endpoint", flags.DBEndpoint))
+		zap.String("DB endpoint", flags.DBEndpoint),
+	)
 
-	os.Mkdir("tmp", 0666)
-	if !flags.Restore {
-		storage.Storage.Clear()
-		_, err := os.Create(flags.FileStoragePath)
-		if err != nil {
-			logger.Log.Error("error", zap.Error(err))
+	if flags.DBEndpoint != "" {
+		os.Mkdir("tmp", 0666)
+		if !flags.Restore {
+			storage.Storage.Clear()
+			_, err := os.Create(flags.FileStoragePath)
+			if err != nil {
+				logger.Log.Error("error", zap.Error(err))
+			}
+		} else {
+			storage.Storage.Restore(flags.FileStoragePath)
 		}
-	} else {
-		storage.Storage.Restore(flags.FileStoragePath)
-	}
 
-	if flags.Cfg.Address != "" {
-		flags.ServerEndpoint = flags.Cfg.Address
-	}
+		if flags.Cfg.Address != "" {
+			flags.ServerEndpoint = flags.Cfg.Address
+		}
 
-	go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
+		go storage.WriteWithInterval(storage.Storage, flags.FileStoragePath, flags.StoreInterval)
+	}
 
 	r := gin.New()
 	r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
