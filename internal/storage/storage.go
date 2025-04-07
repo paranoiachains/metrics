@@ -319,7 +319,10 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 			var currentDelta sql.NullInt64
 			row := tx.QueryRowContext(ctx, counterDeltaQuery, metric.ID)
 			err := row.Scan(&currentDelta)
-			if err != nil {
+			if err == sql.ErrNoRows {
+				currentDelta.Int64 = 0
+			}
+			if err != nil && err != sql.ErrNoRows {
 				tx.Rollback()
 				return err
 			}
