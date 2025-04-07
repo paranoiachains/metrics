@@ -317,7 +317,7 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 			}
 		case "counter":
 			var currentDelta sql.NullInt64
-			row := tx.QueryRowContext(ctx, counterDeltaQuery, *metric.Delta)
+			row := tx.QueryRowContext(ctx, counterDeltaQuery, metric.ID)
 			err := row.Scan(&currentDelta)
 			if err != nil {
 				tx.Rollback()
