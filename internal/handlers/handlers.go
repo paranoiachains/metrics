@@ -34,7 +34,7 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update(context.TODO(), "gauge", metricName, v)
+		db.Update(context.Background(), "gauge", metricName, v)
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
@@ -43,7 +43,7 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update(context.TODO(), "counter", metricName, v)
+		db.Update(context.Background(), "counter", metricName, v)
 	}
 	c.String(http.StatusOK, "")
 }
@@ -120,9 +120,9 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 	}
 	switch metric.MType {
 	case "gauge":
-		db.Update(context.TODO(), metric.MType, metric.ID, *metric.Value)
+		db.Update(context.Background(), metric.MType, metric.ID, *metric.Value)
 	case "counter":
-		db.Update(context.TODO(), metric.MType, metric.ID, *metric.Delta)
+		db.Update(context.Background(), metric.MType, metric.ID, *metric.Delta)
 	default:
 		c.String(http.StatusBadRequest, "")
 	}
@@ -160,7 +160,7 @@ func returnValue(c *gin.Context, db storage.Database) {
 		c.String(http.StatusNotFound, "")
 		return
 	}
-	respMetric, err := db.Return(context.TODO(), reqMetric.MType, reqMetric.ID)
+	respMetric, err := db.Return(context.Background(), reqMetric.MType, reqMetric.ID)
 	if err != nil {
 		logger.Log.Error("error while getting metric from db", zap.Error(err))
 		c.String(http.StatusNotFound, "")
