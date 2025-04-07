@@ -70,6 +70,20 @@ func (mr *MockDatabaseMockRecorder) Update(ctx, mtype, id, value any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDatabase)(nil).Update), ctx, mtype, id, value)
 }
 
+// UpdateBatch mocks base method.
+func (m *MockDatabase) UpdateBatch(ctx context.Context, metrics collector.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBatch", ctx, metrics)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBatch indicates an expected call of UpdateBatch.
+func (mr *MockDatabaseMockRecorder) UpdateBatch(ctx, metrics any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBatch", reflect.TypeOf((*MockDatabase)(nil).UpdateBatch), ctx, metrics)
+}
+
 // MockFileHandler is a mock of FileHandler interface.
 type MockFileHandler struct {
 	ctrl     *gomock.Controller

@@ -67,6 +67,7 @@ func main() {
 
 	// JSON requests
 	r.POST("/update/", handlers.JSONUpdate())
+	r.POST("/updates/", handlers.JSONBatch())
 	r.POST("/value/", handlers.JSONValue())
 
 	// casual url requests

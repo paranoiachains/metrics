@@ -22,6 +22,7 @@ var CurrentStorage Database
 // flexibility
 type Database interface {
 	Update(ctx context.Context, mtype string, id string, value any) error
+	UpdateBatch(ctx context.Context, metrics collector.Metrics) error
 	Return(ctx context.Context, mtype string, id string) (*collector.Metric, error)
 }
 
@@ -91,6 +92,21 @@ func (s *MemStorage) Update(ctx context.Context, mtype string, id string, value 
 			return fmt.Errorf("type assertion error while updating memory storage")
 		}
 		s.Counter[id] += v
+	}
+	return nil
+}
+
+func (s *MemStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			s.Update(ctx, metric.MType, metric.ID, metric.Value)
+		case "counter":
+			s.Update(ctx, metric.MType, metric.ID, metric.Delta)
+		}
 	}
 	return nil
 }
@@ -272,6 +288,43 @@ func (db DBStorage) Update(ctx context.Context, mtype string, id string, value a
 	}
 	fmt.Println("Successfully updated table metrics")
 	return nil
+}
+
+func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) error {
+	insertQuery := `
+	INSERT INTO metrics (id, mtype, value, delta)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (id) DO UPDATE
+		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.PrepareContext(ctx, insertQuery)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, metric.Value, nil)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		case "counter":
+			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, nil, metric.Delta)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+	fmt.Println("Successfully updated table metrics")
+	return tx.Commit()
 }
 
 func (db DBStorage) Return(ctx context.Context, mtype string, id string) (*collector.Metric, error) {
