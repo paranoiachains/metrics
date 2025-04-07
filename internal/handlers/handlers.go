@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -177,7 +176,6 @@ func JSONValue() gin.HandlerFunc {
 }
 
 func batchUpdate(c *gin.Context, db storage.Database) {
-	fmt.Println("ENTERED BATCH UPDATE")
 	var buf bytes.Buffer
 	var reqMetrics collector.Metrics
 

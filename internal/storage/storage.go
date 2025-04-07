@@ -101,7 +101,6 @@ func (s *MemStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics)
 		return ctx.Err()
 	}
 	for _, metric := range metrics {
-		fmt.Println("METRICA IN STORAGE UPDATE BATCH", metric.ID, metric.MType)
 		switch metric.MType {
 		case "gauge":
 			s.Update(ctx, metric.MType, metric.ID, *metric.Value)
@@ -257,15 +256,16 @@ func (db DBStorage) CreateIfNotExists(ctx context.Context) error {
 }
 
 func (db DBStorage) Update(ctx context.Context, mtype string, id string, value any) error {
-	if err := db.CreateIfNotExists(ctx); err != nil {
-		return err
-	}
 	// insert metric if not present else update
 	insertQuery := `
 	INSERT INTO metrics (id, mtype, value, delta)
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (id) DO UPDATE
 		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
+	counterDeltaQuery := `
+	SELECT delta FROM metrics
+	WHERE id=$1;
+	`
 
 	switch mtype {
 	case "gauge":
@@ -282,7 +282,13 @@ func (db DBStorage) Update(ctx context.Context, mtype string, id string, value a
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.ExecContext(ctx, insertQuery, id, mtype, nil, v)
+		var currentDelta int64
+		row := db.QueryRowContext(ctx, counterDeltaQuery, id)
+		err := row.Scan(&currentDelta)
+		if err != nil {
+			return err
+		}
+		_, err = db.ExecContext(ctx, insertQuery, id, mtype, nil, v+currentDelta)
 		if err != nil {
 			return err
 		}
@@ -297,10 +303,15 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (id) DO UPDATE
 		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
+	counterDeltaQuery := `
+	SELECT delta FROM metrics
+	WHERE id=$1;
+	`
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	tx.QueryContext(ctx, counterDeltaQuery)
 
 	stmt, err := tx.PrepareContext(ctx, insertQuery)
 	if err != nil {
@@ -317,7 +328,14 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 				return err
 			}
 		case "counter":
-			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, nil, *metric.Delta)
+			var currentDelta int64
+			row := tx.QueryRowContext(ctx, counterDeltaQuery, *metric.Delta)
+			err := row.Scan(&currentDelta)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			_, err = stmt.ExecContext(ctx, metric.ID, metric.MType, nil, *metric.Delta+currentDelta)
 			if err != nil {
 				tx.Rollback()
 				return err
