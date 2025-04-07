@@ -101,11 +101,12 @@ func (s *MemStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics)
 		return ctx.Err()
 	}
 	for _, metric := range metrics {
+		fmt.Println("METRICA IN STORAGE UPDATE BATCH", metric.ID, metric.MType)
 		switch metric.MType {
 		case "gauge":
-			s.Update(ctx, metric.MType, metric.ID, metric.Value)
+			s.Update(ctx, metric.MType, metric.ID, *metric.Value)
 		case "counter":
-			s.Update(ctx, metric.MType, metric.ID, metric.Delta)
+			s.Update(ctx, metric.MType, metric.ID, *metric.Delta)
 		}
 	}
 	return nil
@@ -310,13 +311,13 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 	for _, metric := range metrics {
 		switch metric.MType {
 		case "gauge":
-			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, metric.Value, nil)
+			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, *metric.Value, nil)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
 		case "counter":
-			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, nil, metric.Delta)
+			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, nil, *metric.Delta)
 			if err != nil {
 				tx.Rollback()
 				return err
