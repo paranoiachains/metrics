@@ -311,7 +311,6 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 	if err != nil {
 		return err
 	}
-	tx.QueryContext(ctx, counterDeltaQuery)
 
 	stmt, err := tx.PrepareContext(ctx, insertQuery)
 	if err != nil {
