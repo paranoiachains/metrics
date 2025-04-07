@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -33,7 +34,7 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update("gauge", metricName, v)
+		db.Update(context.Background(), "gauge", metricName, v)
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
@@ -42,24 +43,20 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update("counter", metricName, v)
+		db.Update(context.Background(), "counter", metricName, v)
 	}
 	c.String(http.StatusOK, "")
 }
 
 // URLUpdate is a Gin route handler for POST HTTP metric updates
 func URLUpdate() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
 		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
 			logger.Log.Error("invalid metric type")
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		urlHandle(c, c.Param("metricType"), s)
+		urlHandle(c, c.Param("metricType"), storage.CurrentStorage)
 	}
 }
 
@@ -123,9 +120,9 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 	}
 	switch metric.MType {
 	case "gauge":
-		db.Update(metric.MType, metric.ID, *metric.Value)
+		db.Update(context.Background(), metric.MType, metric.ID, *metric.Value)
 	case "counter":
-		db.Update(metric.MType, metric.ID, *metric.Delta)
+		db.Update(context.Background(), metric.MType, metric.ID, *metric.Delta)
 	default:
 		c.String(http.StatusBadRequest, "")
 	}
@@ -135,12 +132,8 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 
 // JSONUpdate is a Gin route handler for POST HTTP metric updates
 func JSONUpdate() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
-		jsonHandle(c, s)
+		jsonHandle(c, storage.CurrentStorage)
 	}
 }
 
@@ -167,7 +160,7 @@ func returnValue(c *gin.Context, db storage.Database) {
 		c.String(http.StatusNotFound, "")
 		return
 	}
-	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
+	respMetric, err := db.Return(context.Background(), reqMetric.MType, reqMetric.ID)
 	if err != nil {
 		logger.Log.Error("error while getting metric from db", zap.Error(err))
 		c.String(http.StatusNotFound, "")
@@ -177,12 +170,51 @@ func returnValue(c *gin.Context, db storage.Database) {
 }
 
 func JSONValue() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
-		returnValue(c, s)
+		returnValue(c, storage.CurrentStorage)
+	}
+}
+
+func batchUpdate(c *gin.Context, db storage.Database) {
+	var buf bytes.Buffer
+	var reqMetrics collector.Metrics
+
+	_, err := buf.ReadFrom(c.Request.Body)
+	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
+	if err != nil {
+		logger.Log.Error("error while reading from request body")
+		c.String(http.StatusInternalServerError, "")
+		return
+	}
+	if err = json.Unmarshal(buf.Bytes(), &reqMetrics); err != nil {
+		logger.Log.Error("error while decoding json")
+		c.String(http.StatusBadRequest, "")
+		return
+	}
+	for _, metric := range reqMetrics {
+		if metric.ID == "" {
+			logger.Log.Error("metric id not found", zap.String("metric id", metric.ID))
+			c.String(http.StatusNotFound, "")
+			return
+		}
+		if metric.Delta == nil && metric.Value == nil {
+			logger.Log.Error("no metric value!")
+			c.String(http.StatusBadRequest, "")
+			return
+		}
+	}
+	err = db.UpdateBatch(context.Background(), reqMetrics)
+	if err != nil {
+		logger.Log.Error("error while batch updating", zap.Error(err))
+		c.String(http.StatusInternalServerError, "")
+		return
+	}
+	c.JSON(http.StatusOK, reqMetrics)
+}
+
+func JSONBatch() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		batchUpdate(c, storage.CurrentStorage)
 	}
 }
 
@@ -196,8 +228,7 @@ func HTMLReturnAll(c *gin.Context) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		</head>
 		<body>
-			<h1>{{ .message }}</h1>
-			<p>{{ .metrics }}</p>
+			<h1>hii!</h1>
 		</body>
 		</html>`)
 }

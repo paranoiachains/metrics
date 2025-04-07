@@ -2,19 +2,26 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/paranoiachains/metrics/internal/collector"
+	"github.com/paranoiachains/metrics/internal/middleware"
+	"github.com/paranoiachains/metrics/internal/mocks"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestMetricHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	type args struct {
-		metricType string
+		metricType  string
+		metricName  string
+		metricValue interface{}
 	}
 	type want struct {
 		statusCode  int
@@ -36,7 +43,9 @@ func TestMetricHandler(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
-				metricType: "gauge",
+				metricType:  "gauge",
+				metricName:  "asd",
+				metricValue: float64(123),
 			},
 		},
 		{
@@ -48,7 +57,9 @@ func TestMetricHandler(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
-				metricType: "counter",
+				metricType:  "counter",
+				metricName:  "asd",
+				metricValue: int64(123),
 			},
 		},
 		{
@@ -60,7 +71,9 @@ func TestMetricHandler(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
-				metricType: "gauge",
+				metricType:  "gauge",
+				metricName:  "asd",
+				metricValue: float64(123),
 			},
 		},
 		{
@@ -72,7 +85,9 @@ func TestMetricHandler(t *testing.T) {
 				contentType: "text/plain",
 			},
 			args: args{
-				metricType: "gauge",
+				metricType:  "gauge",
+				metricName:  "",
+				metricValue: float64(123),
 			},
 		},
 		{
@@ -84,23 +99,43 @@ func TestMetricHandler(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 			args: args{
-				metricType: "gauge",
+				metricType:  "gauge",
+				metricName:  "asd",
+				metricValue: "asd",
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := gin.Default()
-			r.POST("/update/:metricType/:metricName/:metricValue", URLUpdate())
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockStorage := mocks.NewMockDatabase(ctrl)
+
+			if tt.want.statusCode == http.StatusOK {
+				mockStorage.EXPECT().Update(gomock.Any(), tt.args.metricType, tt.args.metricName, gomock.Any())
+			}
+
+			r := gin.New()
+			r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
+
+			r.POST("/update/:metricType/:metricName/:metricValue", func(c *gin.Context) {
+				if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
+					c.String(http.StatusBadRequest, "invalid metric type")
+					return
+				}
+				urlHandle(c, c.Param("metricType"), mockStorage)
+			})
+
 			request := httptest.NewRequest(tt.method, tt.url, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, request)
 
 			result := w.Result()
+			defer result.Body.Close()
+
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
-
-			result.Body.Close()
 		})
 	}
 }
@@ -159,7 +194,7 @@ func TestJSONValue(t *testing.T) {
 			description: "Store and retrieve counter metric",
 		},
 		{
-			name:   "pollcount 0?",
+			name:   "pollcount 0",
 			metric: "counter",
 			sendBody: `{
 				"id": "PollCount",
@@ -175,15 +210,59 @@ func TestJSONValue(t *testing.T) {
 				statusCode:  200,
 				body:        `{"id":"PollCount","type":"counter","delta":0}`,
 			},
-			description: "pollcount error",
+			description: "pollcount with zero value",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := gin.Default()
-			r.POST("/update/", JSONUpdate())
-			r.POST("/value/", JSONValue())
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockStorage := mocks.NewMockDatabase(ctrl)
+
+			if tt.want.statusCode == http.StatusOK {
+				var sendMetric collector.Metric
+				err := json.Unmarshal([]byte(tt.sendBody), &sendMetric)
+				if err != nil {
+					t.Fatalf("failed to unmarshal sendBody: %v", err)
+				}
+
+				var getMetric collector.Metric
+				err = json.Unmarshal([]byte(tt.getBody), &getMetric)
+				if err != nil {
+					t.Fatalf("failed to unmarshal getBody: %v", err)
+				}
+				var wantMetric collector.Metric
+				err = json.Unmarshal([]byte(tt.want.body), &wantMetric)
+				if err != nil {
+					t.Fatalf("failed to unmarshal want.body: %v", err)
+				}
+
+				if sendMetric.MType == "gauge" {
+					mockStorage.EXPECT().
+						Update(gomock.Any(), sendMetric.MType, sendMetric.ID, *sendMetric.Value).
+						Return(nil)
+				} else {
+					mockStorage.EXPECT().
+						Update(gomock.Any(), sendMetric.MType, sendMetric.ID, *sendMetric.Delta).
+						Return(nil)
+				}
+
+				mockStorage.EXPECT().
+					Return(gomock.Any(), getMetric.MType, getMetric.ID).
+					Return(&wantMetric, nil)
+			}
+
+			r := gin.New()
+			r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
+
+			r.POST("/update/", func(c *gin.Context) {
+				jsonHandle(c, mockStorage)
+			})
+			r.POST("/value/", func(c *gin.Context) {
+				returnValue(c, mockStorage)
+			})
 
 			if tt.sendBody != "" {
 				sendRequest := httptest.NewRequest("POST", "/update/", bytes.NewBuffer([]byte(tt.sendBody)))

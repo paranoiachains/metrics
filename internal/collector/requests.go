@@ -61,17 +61,16 @@ func Send(endpoint string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	for i := range MyMetrics {
-		obj, err := json.Marshal(MyMetrics[i])
-		if err != nil {
-			fmt.Println("JSON marshaling error:", err)
-			continue
-		}
+	obj, err := json.Marshal(MyMetrics)
+	if err != nil {
+		fmt.Println("JSON marshaling error:", err)
+		return
+	}
 
-		err = NewRequest(fmt.Sprintf("http://%s/update/", endpoint), obj)
-		if err != nil {
-			fmt.Println("Failed to send request:", err)
-		}
+	err = NewRequest(fmt.Sprintf("http://%s/updates/", endpoint), obj)
+	if err != nil {
+		fmt.Println("Failed to send request:", err)
+		return
 	}
 }
 

@@ -12,7 +12,6 @@ func main() {
 		flags.ClientEndpoint = flags.Cfg.Address
 	}
 
-	collector.ClearMetrics()
 	go collector.UpdateWithInterval(flags.PollInterval)
 	go collector.SendWithInterval(flags.ReportInterval, flags.ClientEndpoint)
 

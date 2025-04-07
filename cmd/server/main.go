@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var CurrentStorage storage.Database
+
 func main() {
 	logger.Initialize()
 
@@ -26,6 +28,13 @@ func main() {
 		zap.Int("Store interval", flags.StoreInterval),
 		zap.String("DB endpoint", flags.DBEndpoint),
 	)
+
+	db, err := storage.DetermineStorage()
+	if err != nil {
+		logger.Log.Error("error", zap.Error(err))
+		return
+	}
+	storage.CurrentStorage = db
 
 	// JSON file storage
 	if flags.DBEndpoint == "" {
@@ -58,6 +67,7 @@ func main() {
 
 	// JSON requests
 	r.POST("/update/", handlers.JSONUpdate())
+	r.POST("/updates/", handlers.JSONBatch())
 	r.POST("/value/", handlers.JSONValue())
 
 	// casual url requests
