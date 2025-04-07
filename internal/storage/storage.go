@@ -16,10 +16,13 @@ import (
 
 var Storage = NewMemStorage()
 
+// Depends on the flags used while running the program
+var CurrentStorage Database
+
 // flexibility
 type Database interface {
-	Update(mtype string, id string, value any) error
-	Return(mtype string, id string) (*collector.Metric, error)
+	Update(ctx context.Context, mtype string, id string, value any) error
+	Return(ctx context.Context, mtype string, id string) (*collector.Metric, error)
 }
 
 type FileHandler interface {
@@ -70,7 +73,10 @@ func (s *MemStorage) Clear() {
 }
 
 // updates memory storage
-func (s *MemStorage) Update(mtype string, id string, value any) error {
+func (s *MemStorage) Update(ctx context.Context, mtype string, id string, value any) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	switch mtype {
 	case "gauge":
 		v, ok := value.(float64)
@@ -90,7 +96,10 @@ func (s *MemStorage) Update(mtype string, id string, value any) error {
 }
 
 // retrieves value from memory storage
-func (s MemStorage) Return(mtype string, id string) (*collector.Metric, error) {
+func (s MemStorage) Return(ctx context.Context, mtype string, id string) (*collector.Metric, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	switch mtype {
 	case "gauge":
 		v, ok := s.Gauge[id]
@@ -122,7 +131,7 @@ func (s MemStorage) Write(filename string) error {
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	for name := range s.Gauge {
-		metric, err := s.Return("gauge", name)
+		metric, err := s.Return(context.Background(), "gauge", name)
 		if err != nil {
 			return err
 		}
@@ -130,7 +139,7 @@ func (s MemStorage) Write(filename string) error {
 	}
 
 	for name := range s.Counter {
-		metric, err := s.Return("counter", name)
+		metric, err := s.Return(context.Background(), "counter", name)
 		if err != nil {
 			return err
 		}
@@ -215,7 +224,7 @@ type DBStorage struct {
 	*sql.DB
 }
 
-func (db DBStorage) CreateIfNotExists() error {
+func (db DBStorage) CreateIfNotExists(ctx context.Context) error {
 	createQuery := `
 	CREATE TABLE IF NOT EXISTS metrics (
     id VARCHAR(255) PRIMARY KEY,
@@ -223,10 +232,6 @@ func (db DBStorage) CreateIfNotExists() error {
     value DOUBLE PRECISION,
     delta BIGINT
 );`
-	// cancel after 5 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	_, err := db.ExecContext(ctx, createQuery)
 	if err != nil {
 		return err
@@ -234,8 +239,8 @@ func (db DBStorage) CreateIfNotExists() error {
 	return nil
 }
 
-func (db DBStorage) Update(mtype string, id string, value any) error {
-	if err := db.CreateIfNotExists(); err != nil {
+func (db DBStorage) Update(ctx context.Context, mtype string, id string, value any) error {
+	if err := db.CreateIfNotExists(ctx); err != nil {
 		return err
 	}
 	// insert metric if not present else update
@@ -244,10 +249,6 @@ func (db DBStorage) Update(mtype string, id string, value any) error {
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (id) DO UPDATE
 		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
-
-	// cancel after 5 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	switch mtype {
 	case "gauge":
@@ -264,7 +265,7 @@ func (db DBStorage) Update(mtype string, id string, value any) error {
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.Exec(insertQuery, id, mtype, nil, v)
+		_, err := db.ExecContext(ctx, insertQuery, id, mtype, nil, v)
 		if err != nil {
 			return err
 		}
@@ -273,15 +274,11 @@ func (db DBStorage) Update(mtype string, id string, value any) error {
 	return nil
 }
 
-func (db DBStorage) Return(mtype string, id string) (*collector.Metric, error) {
+func (db DBStorage) Return(ctx context.Context, mtype string, id string) (*collector.Metric, error) {
 	selectQuery := `
 	SELECT id, mtype, value, delta 
 	FROM metrics 
 	WHERE id=$1 AND mtype=$2;`
-
-	// cancel after 5 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	row := db.QueryRowContext(ctx, selectQuery, id, mtype)
 	var metric collector.Metric
@@ -308,9 +305,8 @@ func ConnectAndPing(driverName string, dataSourceName string) (*DBStorage, error
 
 	// calling CreateIfNotExists() for every new connection
 	newDB := &DBStorage{db}
-	if err := newDB.CreateIfNotExists(); err != nil {
+	if err := newDB.CreateIfNotExists(ctx); err != nil {
 		return nil, err
 	}
-	fmt.Println("Successfully")
 	return newDB, nil
 }
