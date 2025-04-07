@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -33,7 +34,7 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update("gauge", metricName, v)
+		db.Update(context.TODO(), "gauge", metricName, v)
 
 	case "counter":
 		v, err := strconv.ParseInt(metricValue, 10, 64)
@@ -42,24 +43,20 @@ func urlHandle(c *gin.Context, metricType string, db storage.Database) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		db.Update("counter", metricName, v)
+		db.Update(context.TODO(), "counter", metricName, v)
 	}
 	c.String(http.StatusOK, "")
 }
 
 // URLUpdate is a Gin route handler for POST HTTP metric updates
 func URLUpdate() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
 		if c.Param("metricType") != "gauge" && c.Param("metricType") != "counter" {
 			logger.Log.Error("invalid metric type")
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		urlHandle(c, c.Param("metricType"), s)
+		urlHandle(c, c.Param("metricType"), storage.CurrentStorage)
 	}
 }
 
@@ -123,9 +120,9 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 	}
 	switch metric.MType {
 	case "gauge":
-		db.Update(metric.MType, metric.ID, *metric.Value)
+		db.Update(context.TODO(), metric.MType, metric.ID, *metric.Value)
 	case "counter":
-		db.Update(metric.MType, metric.ID, *metric.Delta)
+		db.Update(context.TODO(), metric.MType, metric.ID, *metric.Delta)
 	default:
 		c.String(http.StatusBadRequest, "")
 	}
@@ -135,12 +132,8 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 
 // JSONUpdate is a Gin route handler for POST HTTP metric updates
 func JSONUpdate() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
-		jsonHandle(c, s)
+		jsonHandle(c, storage.CurrentStorage)
 	}
 }
 
@@ -167,7 +160,7 @@ func returnValue(c *gin.Context, db storage.Database) {
 		c.String(http.StatusNotFound, "")
 		return
 	}
-	respMetric, err := db.Return(reqMetric.MType, reqMetric.ID)
+	respMetric, err := db.Return(context.TODO(), reqMetric.MType, reqMetric.ID)
 	if err != nil {
 		logger.Log.Error("error while getting metric from db", zap.Error(err))
 		c.String(http.StatusNotFound, "")
@@ -177,12 +170,8 @@ func returnValue(c *gin.Context, db storage.Database) {
 }
 
 func JSONValue() gin.HandlerFunc {
-	s, err := storage.DetermineStorage()
-	if err != nil {
-		logger.Log.Fatal("fatal error while connecting to db", zap.Error(err))
-	}
 	return func(c *gin.Context) {
-		returnValue(c, s)
+		returnValue(c, storage.CurrentStorage)
 	}
 }
 
