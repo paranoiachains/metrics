@@ -316,14 +316,18 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 				return err
 			}
 		case "counter":
-			var currentDelta int64
+			var currentDelta sql.NullInt64
 			row := tx.QueryRowContext(ctx, counterDeltaQuery, *metric.Delta)
 			err := row.Scan(&currentDelta)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			_, err = stmt.ExecContext(ctx, metric.ID, metric.MType, nil, *metric.Delta+currentDelta)
+			newDelta := *metric.Delta
+			if currentDelta.Valid {
+				newDelta += currentDelta.Int64
+			}
+			_, err = stmt.ExecContext(ctx, metric.ID, metric.MType, nil, newDelta)
 			if err != nil {
 				tx.Rollback()
 				return err
