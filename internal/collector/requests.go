@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -45,7 +46,7 @@ func NewRequest(url string, obj []byte) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("request failed: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -57,28 +58,45 @@ func NewRequest(url string, obj []byte) error {
 }
 
 // Send HTTP requests with collected metrics
-func Send(endpoint string) {
+func Send(endpoint string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
 	obj, err := json.Marshal(MyMetrics)
 	if err != nil {
-		fmt.Println("JSON marshaling error:", err)
-		return
+		return err
 	}
 
 	err = NewRequest(fmt.Sprintf("http://%s/updates/", endpoint), obj)
 	if err != nil {
-		fmt.Println("Failed to send request:", err)
-		return
+		return err
 	}
+	return nil
 }
 
 // Send HTTP requests with collected metrics with interval
-func SendWithInterval(reportInterval int, endpoint string) {
+func SendWithInterval(reportInterval int, endpoint string) error {
 	for {
 		time.Sleep(time.Duration(reportInterval) * time.Second)
-		Send(endpoint)
-		fmt.Println("Metrics sent!")
+
+		var lastErr error
+		retryDelays := []time.Duration{1, 3, 5}
+
+		for _, delay := range retryDelays {
+			if err := Send(endpoint); err == nil {
+				fmt.Println("Metrics sent!")
+				lastErr = nil
+				break
+			} else {
+				lastErr = err
+				fmt.Printf("Send failed, retrying in %v...\n", delay*time.Second)
+				time.Sleep(delay * time.Second)
+			}
+		}
+
+		if lastErr != nil {
+			fmt.Println("error: ", lastErr)
+			log.Fatal("No connection to server, exiting program")
+		}
 	}
 }
