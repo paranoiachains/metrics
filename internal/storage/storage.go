@@ -270,6 +270,11 @@ func (db DBStorage) Update(ctx context.Context, mtype string, id string, value a
 	ON CONFLICT (id) DO UPDATE
 		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
 
+	counterDeltaQuery := `
+	SELECT delta FROM metrics
+	WHERE id=$1;
+	`
+
 	switch mtype {
 	case "gauge":
 		v, ok := value.(float64)
@@ -287,7 +292,17 @@ func (db DBStorage) Update(ctx context.Context, mtype string, id string, value a
 			return fmt.Errorf("type assertion error while updating database")
 		}
 		return withRetry(func() error {
-			_, err := db.ExecContext(ctx, insertQuery, id, mtype, nil, v)
+			var currentDelta sql.NullInt64
+			row := db.QueryRowContext(ctx, counterDeltaQuery, id)
+			err := row.Scan(&currentDelta)
+			if err != nil && err != sql.ErrNoRows {
+				return err
+			}
+			newDelta := v
+			if currentDelta.Valid {
+				newDelta += currentDelta.Int64
+			}
+			_, err = db.ExecContext(ctx, insertQuery, id, mtype, nil, newDelta)
 			return err
 		})
 	default:
