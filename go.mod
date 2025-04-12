@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/gin-gonic/gin v1.10.0
+	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
