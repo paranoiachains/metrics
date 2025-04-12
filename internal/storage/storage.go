@@ -4,15 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"time"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/paranoiachains/metrics/internal/collector"
 	"github.com/paranoiachains/metrics/internal/flags"
 )
+
+var retryDelays = []time.Duration{1, 3, 5}
 
 var Storage = NewMemStorage()
 
@@ -248,7 +253,10 @@ func (db DBStorage) CreateIfNotExists(ctx context.Context) error {
     value DOUBLE PRECISION,
     delta BIGINT
 );`
-	_, err := db.ExecContext(ctx, createQuery)
+	err := withRetry(func() error {
+		_, err := db.ExecContext(ctx, createQuery)
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -256,34 +264,35 @@ func (db DBStorage) CreateIfNotExists(ctx context.Context) error {
 }
 
 func (db DBStorage) Update(ctx context.Context, mtype string, id string, value any) error {
-	// insert metric if not present else update
 	insertQuery := `
 	INSERT INTO metrics (id, mtype, value, delta)
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (id) DO UPDATE
 		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`
+
 	switch mtype {
 	case "gauge":
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.ExecContext(ctx, insertQuery, id, mtype, v, nil)
-		if err != nil {
+		return withRetry(func() error {
+			_, err := db.ExecContext(ctx, insertQuery, id, mtype, v, nil)
 			return err
-		}
+		})
+
 	case "counter":
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("type assertion error while updating database")
 		}
-		_, err := db.ExecContext(ctx, insertQuery, id, mtype, nil, v)
-		if err != nil {
+		return withRetry(func() error {
+			_, err := db.ExecContext(ctx, insertQuery, id, mtype, nil, v)
 			return err
-		}
+		})
+	default:
+		return fmt.Errorf("unknown metric type: %s", mtype)
 	}
-	fmt.Println("Successfully updated table metrics")
-	return nil
 }
 
 func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) error {
@@ -296,49 +305,51 @@ func (db DBStorage) UpdateBatch(ctx context.Context, metrics collector.Metrics) 
 	SELECT delta FROM metrics
 	WHERE id=$1;
 	`
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
 
-	stmt, err := tx.PrepareContext(ctx, insertQuery)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+	return withRetry(func() error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
 
-	for _, metric := range metrics {
-		switch metric.MType {
-		case "gauge":
-			_, err := stmt.ExecContext(ctx, metric.ID, metric.MType, *metric.Value, nil)
-			if err != nil {
+		stmt, err := tx.PrepareContext(ctx, insertQuery)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		defer stmt.Close()
+
+		for _, metric := range metrics {
+			switch metric.MType {
+			case "gauge":
+				if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType, *metric.Value, nil); err != nil {
+					tx.Rollback()
+					return err
+				}
+			case "counter":
+				var currentDelta sql.NullInt64
+				row := tx.QueryRowContext(ctx, counterDeltaQuery, metric.ID)
+				err := row.Scan(&currentDelta)
+				if err != nil && err != sql.ErrNoRows {
+					tx.Rollback()
+					return err
+				}
+				newDelta := *metric.Delta
+				if currentDelta.Valid {
+					newDelta += currentDelta.Int64
+				}
+				if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType, nil, newDelta); err != nil {
+					tx.Rollback()
+					return err
+				}
+			default:
 				tx.Rollback()
-				return err
-			}
-		case "counter":
-			var currentDelta sql.NullInt64
-			row := tx.QueryRowContext(ctx, counterDeltaQuery, metric.ID)
-			err := row.Scan(&currentDelta)
-			if err == sql.ErrNoRows {
-				currentDelta.Int64 = 0
-			}
-			if err != nil && err != sql.ErrNoRows {
-				tx.Rollback()
-				return err
-			}
-			newDelta := *metric.Delta
-			if currentDelta.Valid {
-				newDelta += currentDelta.Int64
-			}
-			_, err = stmt.ExecContext(ctx, metric.ID, metric.MType, nil, newDelta)
-			if err != nil {
-				tx.Rollback()
-				return err
+				return fmt.Errorf("unknown metric type: %s", metric.MType)
 			}
 		}
-	}
-	fmt.Println("Successfully updated table metrics")
-	return tx.Commit()
+
+		return tx.Commit()
+	})
 }
 
 func (db DBStorage) Return(ctx context.Context, mtype string, id string) (*collector.Metric, error) {
@@ -347,9 +358,11 @@ func (db DBStorage) Return(ctx context.Context, mtype string, id string) (*colle
 	FROM metrics 
 	WHERE id=$1 AND mtype=$2;`
 
-	row := db.QueryRowContext(ctx, selectQuery, id, mtype)
 	var metric collector.Metric
-	err := row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
+	err := withRetry(func() error {
+		row := db.QueryRowContext(ctx, selectQuery, id, mtype)
+		return row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -370,10 +383,29 @@ func ConnectAndPing(driverName string, dataSourceName string) (*DBStorage, error
 	}
 	fmt.Println("Successfully connected to db")
 
-	// calling CreateIfNotExists() for every new connection
 	newDB := &DBStorage{db}
 	if err := newDB.CreateIfNotExists(ctx); err != nil {
 		return nil, err
 	}
 	return newDB, nil
+}
+
+func withRetry(fn func() error) error {
+	var lastErr error
+	for _, delay := range retryDelays {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+			fmt.Printf("DB connection failed, retrying in %v...\n", delay*time.Second)
+			time.Sleep(delay * time.Second)
+			continue
+		}
+		return err // не retriable
+	}
+	return lastErr
 }
