@@ -27,6 +27,7 @@ func main() {
 		zap.String("Path", flags.FileStoragePath),
 		zap.Int("Store interval", flags.StoreInterval),
 		zap.String("DB endpoint", flags.DBEndpoint),
+		zap.Bool("Key provided", flags.ServerKey != ""),
 	)
 
 	db, err := storage.DetermineStorage()
@@ -57,7 +58,7 @@ func main() {
 	}
 
 	r := gin.New()
-	r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware())
+	r.Use(gin.Recovery(), middleware.LoggerMiddleware(), middleware.GzipMiddleware(), middleware.Hash())
 
 	// HTML response
 	r.GET("/", handlers.HTMLReturnAll)
