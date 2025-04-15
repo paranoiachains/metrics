@@ -8,20 +8,24 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-var ServerEndpoint string
-var ClientEndpoint string
-var ReportInterval int
-var PollInterval int
-var EncodingEnabled bool
-var StoreInterval int
-var FileStoragePath string
-var Restore bool
-var DBEndpoint string
+var (
+	ServerEndpoint  string
+	ClientEndpoint  string
+	ReportInterval  int
+	PollInterval    int
+	EncodingEnabled bool
+	StoreInterval   int
+	FileStoragePath string
+	Restore         bool
+	DBEndpoint      string
+	ClientKey       string
+	ServerKey       string
 
-var Cfg Config
+	Cfg Config
 
-var serverFlags = flag.NewFlagSet("", flag.ExitOnError)
-var agentFlags = flag.NewFlagSet("", flag.ExitOnError)
+	serverFlags = flag.NewFlagSet("", flag.ExitOnError)
+	agentFlags  = flag.NewFlagSet("", flag.ExitOnError)
+)
 
 type Config struct {
 	DBEndpointEnv   string `env:"DATABASE_DSN"`
@@ -34,6 +38,7 @@ type Config struct {
 	DBUser          string `env:"DB_USER"`
 	DBPassword      string `env:"DB_PASSWORD"`
 	DBName          string `env:"DB_NAME"`
+	Key             string `env:"KEY"`
 }
 
 func ParseEnv() {
@@ -59,6 +64,10 @@ func ParseEnv() {
 	if Cfg.DBEndpointEnv != "" {
 		DBEndpoint = Cfg.DBEndpointEnv
 	}
+	if Cfg.Key != "" {
+		ServerKey = Cfg.Key
+		ClientKey = Cfg.Key
+	}
 }
 
 func ParseServerFlags() {
@@ -67,6 +76,7 @@ func ParseServerFlags() {
 	serverFlags.StringVar(&FileStoragePath, "f", "tmp/metrics-db.json", "storage file path path")
 	serverFlags.BoolVar(&Restore, "r", true, "restore previous metrics")
 	serverFlags.StringVar(&DBEndpoint, "d", "", "database endpoint")
+	serverFlags.StringVar(&ServerKey, "k", "", "server signature key")
 	serverFlags.Parse(os.Args[1:])
 }
 
@@ -75,5 +85,6 @@ func ParseAgentFlags() {
 	agentFlags.IntVar(&ReportInterval, "r", 10, "Set report interval")
 	agentFlags.IntVar(&PollInterval, "p", 2, "Set poll interval")
 	agentFlags.BoolVar(&EncodingEnabled, "e", true, "enable gzip encoding of http requests")
+	agentFlags.StringVar(&ClientKey, "k", "", "client signature key")
 	agentFlags.Parse(os.Args[1:])
 }

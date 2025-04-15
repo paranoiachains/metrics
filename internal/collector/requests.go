@@ -3,6 +3,9 @@ package collector
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -38,8 +41,18 @@ func NewRequest(url string, obj []byte) error {
 	// setting headers
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("Content-Type", "application/json")
+
 	if flags.EncodingEnabled {
 		req.Header.Set("Content-Encoding", "gzip")
+	}
+
+	// adding signature header if flag provided
+	if flags.ClientKey != "" {
+		h := hmac.New(sha256.New, []byte(flags.ClientKey))
+		h.Write(obj)
+		token := h.Sum(nil)
+		hexHash := hex.EncodeToString(token)
+		req.Header.Set("HashSHA256", hexHash)
 	}
 
 	// send request

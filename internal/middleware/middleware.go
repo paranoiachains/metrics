@@ -3,12 +3,16 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/paranoiachains/metrics/internal/flags"
 	"github.com/paranoiachains/metrics/internal/logger"
 	"go.uber.org/zap"
 )
@@ -82,4 +86,37 @@ type gzipWriter struct {
 
 func (g *gzipWriter) Write(data []byte) (int, error) {
 	return g.writer.Write(data)
+}
+
+func shouldHash(r *http.Request) bool {
+	return r.Header.Get("HashSHA256") != "" && flags.ServerKey != ""
+}
+
+func Hash() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if shouldHash(c.Request) {
+			clientHashHex := c.Request.Header.Get("HashSHA256")
+			clientHash, _ := hex.DecodeString(clientHashHex)
+
+			body, err := io.ReadAll(c.Request.Body)
+			if err != nil {
+				logger.Log.Error("hashsha256", zap.Error(err))
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+
+			h := hmac.New(sha256.New, []byte(flags.ServerKey))
+			h.Write(body)
+			serverHash := h.Sum(nil)
+			if hmac.Equal(serverHash, []byte(clientHash)) {
+				logger.Log.Info("hashsha256", zap.Bool("valid", true))
+				c.Header("HashSHA256", clientHashHex)
+			} else {
+				logger.Log.Info("hashsha256", zap.Bool("valid", false))
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+		}
+		c.Next()
+	}
 }
