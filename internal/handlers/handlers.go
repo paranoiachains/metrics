@@ -99,7 +99,7 @@ func jsonHandle(c *gin.Context, db storage.Database) {
 	_, err := buf.ReadFrom(c.Request.Body)
 	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
-		logger.Log.Error("error while reading from request body")
+		logger.Log.Error("error while reading from request body", zap.Error(err))
 		c.String(http.StatusNotFound, "")
 		return
 	}
@@ -145,12 +145,12 @@ func returnValue(c *gin.Context, db storage.Database) {
 	_, err := buf.ReadFrom(c.Request.Body)
 	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
-		logger.Log.Error("error while reading from request body")
+		logger.Log.Error("error while reading from request body", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &reqMetric); err != nil {
-		logger.Log.Error("error while decoding json")
+		logger.Log.Error("error while decoding json", zap.Error(err))
 		c.String(http.StatusBadRequest, "")
 		return
 	}
@@ -182,12 +182,12 @@ func batchUpdate(c *gin.Context, db storage.Database) {
 	_, err := buf.ReadFrom(c.Request.Body)
 	logger.Log.Info("request body:", zap.ByteString("body", buf.Bytes()))
 	if err != nil {
-		logger.Log.Error("error while reading from request body")
+		logger.Log.Error("error while reading from request body", zap.Error(err))
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &reqMetrics); err != nil {
-		logger.Log.Error("error while decoding json")
+		logger.Log.Error("error while decoding json", zap.Error(err))
 		c.String(http.StatusBadRequest, "")
 		return
 	}
